@@ -1,0 +1,18 @@
+CONFIG_BOSCH_ICCOM := m
+CONFIG_BOSCH_ICCOM_SOCKETS := m
+CONFIG_BOSCH_ICCOM_TRANSPORT_DUMPER := m
+
+export CONFIG_BOSCH_ICCOM
+export CONFIG_BOSCH_ICCOM_SOCKETS
+export CONFIG_BOSCH_ICCOM_TRANSPORT_DUMPER
+
+SRC := $(shell pwd)
+
+all:
+	$(MAKE) -C $(KERNEL_SRC) M=$(SRC)
+
+modules_install:
+	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) modules_install
+
+clean:
+	$(MAKE) -C $(KERNEL_SRC) M=$(SRC) clean
