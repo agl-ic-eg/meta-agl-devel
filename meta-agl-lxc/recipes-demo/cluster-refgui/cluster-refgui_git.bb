@@ -5,6 +5,7 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=5335066555b14d832335aa4660d6c376"
 DEPENDS = " \
     qttools-native \
     qtmultimedia \
+    libclusterapi \
 "
 
 BRANCH = "master"
