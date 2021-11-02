@@ -8,4 +8,5 @@ IMAGE_INSTALL += " \
     weston-init-guest \
     weston-ini-conf-guest \
     cluster-refgui \
+    libiccom \
 "
