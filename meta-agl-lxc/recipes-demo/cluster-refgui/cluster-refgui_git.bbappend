@@ -2,4 +2,4 @@ BRANCH = "dev"
 SRC_URI = "git://github.com/agl-ic-eg/cluster-refgui.git;protocol=git;branch=${BRANCH} \
            file://cluster.service \
 "
-SRCREV = "ffb981bbe7159b6b576c982f72fbad0799871cb0"
+SRCREV = "f84942bec3c0b8c85331bc70919220983634babb"
