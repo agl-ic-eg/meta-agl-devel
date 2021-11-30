@@ -1,0 +1,60 @@
+From d7a7ad476dee136e21fc7de112003528f7675007 Mon Sep 17 00:00:00 2001
+From: Naoto Yamaguchi <naoto.yamaguchi@aisin.co.jp>
+Date: Wed, 1 Dec 2021 08:16:24 +0900
+Subject: [PATCH] Fix fw download issue
+
+---
+ services/server/env/linux/module_common.c | 26 ++++++++++++++++-------
+ 1 file changed, 18 insertions(+), 8 deletions(-)
+
+diff --git a/services/server/env/linux/module_common.c b/services/server/env/linux/module_common.c
+index 5822dab..3c97b28 100644
+--- a/services/server/env/linux/module_common.c
++++ b/services/server/env/linux/module_common.c
+@@ -416,6 +416,10 @@ int PVRSRVDeviceResume(PVRSRV_DEVICE_NODE *psDeviceNode)
+ 	return 0;
+ }
+ 
++//HACK
++static DEFINE_MUTEX(rgx_initialize_mutex);
++//HACK
++
+ /**************************************************************************/ /*!
+ @Function     PVRSRVDeviceOpen
+ @Description  Common device open.
+@@ -455,18 +459,24 @@ int PVRSRVDeviceOpen(PVRSRV_DEVICE_NODE *psDeviceNode,
+ 
+ 	if (psDeviceNode->eDevState == PVRSRV_DEVICE_STATE_INIT)
+ 	{
+-		eError = PVRSRVCommonDeviceInitialise(psDeviceNode);
+-		if (eError != PVRSRV_OK)
++		mutex_lock(&rgx_initialize_mutex);
++		if (psDeviceNode->eDevState == PVRSRV_DEVICE_STATE_INIT)
+ 		{
+-			PVR_DPF((PVR_DBG_ERROR, "%s: Failed to initialise device (%s)",
+-					 __func__, PVRSRVGetErrorString(eError)));
+-			iErr = -ENODEV;
+-			goto out;
+-		}
++			eError = PVRSRVCommonDeviceInitialise(psDeviceNode);
++			if (eError != PVRSRV_OK)
++			{
++				PVR_DPF((PVR_DBG_ERROR, "%s: Failed to initialise device (%s)",
++						 __func__, PVRSRVGetErrorString(eError)));
++				iErr = -ENODEV;
++				mutex_unlock(&rgx_initialize_mutex);
++				goto out;
++			}
+ 
+ #if defined(SUPPORT_RGX)
+-		PVRGpuTraceInitIfEnabled(psDeviceNode);
++			PVRGpuTraceInitIfEnabled(psDeviceNode);
+ #endif
++		}
++		mutex_unlock(&rgx_initialize_mutex);
+ 	}
+ 
+ 	sPrivData.psDevNode = psDeviceNode;
+-- 
+2.25.1
+
