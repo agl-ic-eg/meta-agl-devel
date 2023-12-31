@@ -1,11 +1,13 @@
 [Unit]
 Description=AGL Cluster Reference GUI
 After=multi-user.target weston.service
-Requires=multi-user.target weston.service
+PartOf=cluster-service.service weston.service
 
 [Service]
 EnvironmentFile=/etc/default/cluster
 ExecStart=/opt/apps/cluster
+Restart=on-failure
+StartLimitInterval=0
 
 [Install]
 WantedBy=multi-user.target
