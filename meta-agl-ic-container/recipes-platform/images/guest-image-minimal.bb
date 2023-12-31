@@ -8,4 +8,12 @@ IMAGE_INSTALL += " \
     packagegroup-agl-container-feature-logging-guest \
 "
 
+FEATURE_PACKAGES_selinux:remove = " \
+    packagegroup-agl-core-selinux \
+    ${@bb.utils.contains('DISTRO_FEATURES', 'agl-devel', 'packagegroup-agl-core-selinux-devel', '', d)} \
+"
+FEATURE_PACKAGES_selinux:append = " \
+    packagegroup-agl-core-selinux-guest \
+"
+
 NO_RECOMMENDATIONS = "1"
