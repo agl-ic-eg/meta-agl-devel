@@ -20,4 +20,4 @@ do_install() {
 
 FILES:${PN} += " /usr/share/vosk  /usr/share/vosk/vosk-model-small-en-in-0.4 "
 
-# RPROVIDES:${PN} += "virtual/vosk-model"
+# RPROVIDES:${PN} += "vosk-model"

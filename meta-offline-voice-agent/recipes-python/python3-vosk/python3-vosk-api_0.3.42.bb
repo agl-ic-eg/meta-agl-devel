@@ -38,7 +38,7 @@ RDEPENDS:${PN} += " \
     python3-srt \
     python3-charset-normalizer \
     python3-sounddevice \
-    virtual/vosk-model \
+    vosk-model \
 "
 
 do_install_ptest () {

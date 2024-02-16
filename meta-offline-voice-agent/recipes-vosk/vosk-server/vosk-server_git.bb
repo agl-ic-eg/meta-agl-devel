@@ -29,4 +29,4 @@ do_install () {
 	cp websocket-cpp/vosk-websocket-cpp ${D}${bindir}
 }
 
-RDEPENDS:${PN} += "virtual/vosk-model"
+RDEPENDS:${PN} += "vosk-model"

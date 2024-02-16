@@ -16,7 +16,7 @@ RDEPENDS:${PN} += " \
     python3-vosk-api \
     python3-grpcio \
     python3-protobuf \
-    virtual/vosk-model \
+    vosk-model \
     python3-pycairo \
     python3-pygobject \
 "

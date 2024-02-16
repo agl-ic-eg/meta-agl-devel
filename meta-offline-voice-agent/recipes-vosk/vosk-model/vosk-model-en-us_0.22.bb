@@ -9,8 +9,8 @@ SRC_URI = " \
           "
 # License listed on https://alphacephei.com/vosk/models
 
-SRC_URI[model.sha256sum] = "30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498"
-SRC_URI[license.sha256sum] = "1ff7bf86a1243a98be7964040a7c569ade4e70f8b5e815b1edb5f3a74ca5f567"
+SRC_URI[model.sha256sum] = "47f9a81ebb039dbb0bd319175c36ac393c0893b796c2b6303e64cf58c27b69f6"
+SRC_URI[license.sha256sum] = "46220c6d381bf1c230699077e3a693b2474f4cc768a167f25ced5034ab96890b"
 
 do_install() {
     install -d ${D}/usr/share/vosk
@@ -19,4 +19,4 @@ do_install() {
 
 FILES:${PN} += " /usr/share/vosk  /usr/share/vosk/vosk-model-en-us-0.22 "
 
-RPROVIDES:${PN} += "virtual/vosk-model"
+RPROVIDES:${PN} += "vosk-model"

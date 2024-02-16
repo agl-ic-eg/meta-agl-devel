@@ -23,7 +23,7 @@ IMAGE_INSTALL:append = " \
     agl-service-voiceagent \
     "
 
-PREFERRED_PROVIDER_virtual/vosk-model ?= "vosk-model-small-en-us"
+PREFERRED_RPROVIDER_vosk-model ?= "vosk-model-small-en-us"
 
 
 # bump bazel limits
