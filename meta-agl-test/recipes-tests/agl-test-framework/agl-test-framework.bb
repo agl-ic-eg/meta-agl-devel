@@ -130,7 +130,7 @@ FILES:${PN}-base += " \
     /usr/bin/agl-test \
 "
 
-# Filter for fase mode
+# Filter for fast mode
 FILES:${PN}-fast = " \
      /usr/AGL/agl-test/tests/aio_stress/* \
      /usr/AGL/agl-test/tests/attr/* \
