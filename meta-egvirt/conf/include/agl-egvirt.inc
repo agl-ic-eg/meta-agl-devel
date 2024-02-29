@@ -6,6 +6,7 @@ FEATURE_PACKAGES_virtio-loopback = " \
      virtio-loopback-adapter \
      vhost-device-rng \
      vhost-device-gpio \
+     vhost-device-sound \
      "
 
 EXTRA_IMAGE_FEATURES += "virtio-loopback"
