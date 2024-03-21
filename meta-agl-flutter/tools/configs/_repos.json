@@ -1,35 +1,8 @@
 [
     {
         "uri": "https://github.com/toyota-connected/ivi-homescreen.git",
-        "rev": "f42c61c5349ed4981767239f6ba052c315d89c3a",
+        "rev": "ee49745485a88f23c32b8e3a62da40d4102c4623",
         "branch": "agl"
-    },
-    {
-        "uri": "https://github.com/flutter/packages.git",
-        "branch": "main"
-    },
-    {
-        "uri": "https://github.com/flutter/gallery.git",
-        "branch": "master",
-        "rev": "22a07bf664a2128684ec245032c05b1c8f10048e",
-        "pubspec_path": "gallery"
-    },
-    {
-        "uri": "https://github.com/mogol/flutter_secure_storage.git",
-        "branch": "develop",
-        "rev": "3bb93366161a787b07c45d8ce98c7405b40fbf1f",
-        "pubspec_path": "flutter_secure_storage/flutter_secure_storage/example"
-    },
-    {
-        "uri": "https://github.com/meta-flutter/flutter_animated_background.git",
-        "branch": "meta-flutter",
-        "rev": "46f35ad2a323ab006813a3c4748163536b0fc332",
-        "pubspec_path": "flutter_animated_background/example"
-    },
-    {
-        "uri": "https://github.com/bernardpumped/ped.git",
-        "branch": "agl",
-        "pubspec_path": "ped"
     },
     {
         "uri": "https://chromium.googlesource.com/chromium/tools/depot_tools.git",
