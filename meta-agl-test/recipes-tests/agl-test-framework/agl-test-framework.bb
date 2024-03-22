@@ -7,7 +7,7 @@ PN = 'agl-test-framework'
 PV = '1'
 
 SRC_URI = "git://gerrit.automotivelinux.org/gerrit/src/agl-test-framework;protocol=https;branch=master"
-SRCREV = "c62eef089e10114250c6331530ace7011c522488"
+SRCREV = "8a35e659dba8117eb0bb403cc0d2464bdd6fa052"
 
 S = "${WORKDIR}/git"
 
@@ -45,6 +45,7 @@ FRAMEWORK_INSTALL_LIST = " \
     gdk_pixbuf \
     glib2 \
     gstreamer \
+    gzip \
     json_glib \
     kbd \
     libpam \
@@ -57,7 +58,10 @@ FRAMEWORK_INSTALL_LIST = " \
     LTP/posix_conformance_tests \
     LTP/syscalls \
     openssl \
+    popt \
     python3 \
+    sed \
+    slang \
     stress_ng \
     tar \
     xz \
@@ -145,6 +149,7 @@ FILES:${PN}-fast = " \
      /usr/AGL/agl-test/tests/libpam/* \
      /usr/AGL/agl-test/tests/lua/* \
      /usr/AGL/agl-test/tests/LTP/math/* \
+     /usr/AGL/agl-test/tests/popt* \
      /usr/AGL/agl-test/tests/stress_ng/* \
      /usr/AGL/agl-test/tests/xz/* \
      /usr/AGL/agl-test/tests/zlib/* \
@@ -168,11 +173,14 @@ FILES:${PN}-standard = " \
      /usr/AGL/agl-test/tests/gdbm/* \
      /usr/AGL/agl-test/tests/glib2/* \
      /usr/AGL/agl-test/tests/gstreamer/* \
+     /usr/AGL/agl-test/tests/gzip/* \
      /usr/AGL/agl-test/tests/libxml2/* \
      /usr/AGL/agl-test/tests/linus_stress/* \
      /usr/AGL/agl-test/tests/LTP/cve/* \
      /usr/AGL/agl-test/tests/LTP/posix_conformance_tests/* \
      /usr/AGL/agl-test/tests/openssl/* \
+     /usr/AGL/agl-test/tests/sed/* \
+     /usr/AGL/agl-test/tests/slang/* \
      /usr/AGL/agl-test/tests/tar/* \
 "
 
