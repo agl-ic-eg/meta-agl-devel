@@ -1,8 +1,11 @@
 # DLT for Linux container integration
 FILESEXTRAPATHS:prepend := "${THISDIR}/${BPN}:"
 
+# NOTE:
+# file://0001-Disable-noisy-log-from-dlt-daemon.patch removed
+# until someone can review its status with upstream and rebase
+# it if it is still required.
 SRC_URI:append = " \
-    file://0001-Disable-noisy-log-from-dlt-daemon.patch \
     file://dlt.conf \
     file://dlt-system.conf \
     file://dlt_logstorage.conf \

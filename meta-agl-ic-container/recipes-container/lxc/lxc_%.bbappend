@@ -16,12 +16,14 @@ do_install:append () {
 }
 
 # Divide lxc autostart from main package.
-SYSTEMD_PACKAGES = "${PN}-autostart ${PN}-networking"
+SYSTEMD_PACKAGES = "${PN}-autostart ${PN}-monitord ${PN}-networking"
 SYSTEMD_SERVICE:${PN} = ""
 SYSTEMD_SERVICE:${PN}-autostart = "lxc.service"
 SYSTEMD_AUTO_ENABLE:${PN}-autostart = "enable"
+SYSTEMD_SERVICE:${PN}-monitord = "lxc-monitord.service"
+SYSTEMD_AUTO_ENABLE:${PN}-monitord = "enable"
 
-PACKAGES =+ "${PN}-autostart"
+PACKAGES =+ "${PN}-autostart ${PN}-monitord"
 
 FILES:${PN}-autostart += " \
     ${sysconfdir}/default/lxc \
@@ -29,6 +31,9 @@ FILES:${PN}-autostart += " \
 "
 FILES:${PN}-doc += " \
     ${datadir}/doc/lxc/examples \
+"
+FILES:${PN}-monitord += " \
+    ${libexexdir}/lxc/lxc-monitord \
 "
 FILES:${PN}-networking += " \
     ${sysconfdir}/dnsmasq.d \

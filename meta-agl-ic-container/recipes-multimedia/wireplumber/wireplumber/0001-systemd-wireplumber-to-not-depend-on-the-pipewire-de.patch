@@ -1,4 +1,4 @@
-From a2d324c75057f0ddd66cbe5b5e419fddda213cc2 Mon Sep 17 00:00:00 2001
+From 7c389b72b5a009ca56f90bbc531074b55bdcb5a9 Mon Sep 17 00:00:00 2001
 From: Ashok Sidipotu <ashok.sidipotu@collabora.com>
 Date: Mon, 28 Feb 2022 06:46:19 +0530
 Subject: [PATCH] systemd: changes to run wireplumber instances in containers
@@ -6,15 +6,15 @@ Subject: [PATCH] systemd: changes to run wireplumber instances in containers
 - remove the pipewire daemon dependencies so that
 only wireplumber policy daemon can run in containers.
 - remove pipewire user
+
+Upstream-Status: Inappropriate [configuration]
 ---
  src/systemd/system/wireplumber@.service.in | 8 +++-----
  src/systemd/user/wireplumber@.service.in   | 5 ++---
  2 files changed, 5 insertions(+), 8 deletions(-)
 
- Inappropriate [configuration]
-
 diff --git a/src/systemd/system/wireplumber@.service.in b/src/systemd/system/wireplumber@.service.in
-index ba8eefe..e4b985b 100644
+index 29e65598..686a93d3 100644
 --- a/src/systemd/system/wireplumber@.service.in
 +++ b/src/systemd/system/wireplumber@.service.in
 @@ -5,8 +5,7 @@
@@ -27,8 +27,8 @@ index ba8eefe..e4b985b 100644
  Conflicts=pipewire-media-session.service
  
  [Service]
-@@ -19,9 +18,8 @@ SystemCallFilter=@system-service
- Type=simple
+@@ -19,9 +18,8 @@ Type=simple
+ AmbientCapabilities=CAP_SYS_NICE
  ExecStart=@WP_BINARY@ -c %i.conf
  Restart=on-failure
 -User=pipewire
@@ -40,7 +40,7 @@ index ba8eefe..e4b985b 100644
 -WantedBy=pipewire.service
 +WantedBy=multi-user.target
 diff --git a/src/systemd/user/wireplumber@.service.in b/src/systemd/user/wireplumber@.service.in
-index 9dbceff..7e21194 100644
+index a0b10f7b..8fbd6bd7 100644
 --- a/src/systemd/user/wireplumber@.service.in
 +++ b/src/systemd/user/wireplumber@.service.in
 @@ -5,8 +5,7 @@
@@ -53,12 +53,9 @@ index 9dbceff..7e21194 100644
  Conflicts=pipewire-media-session.service
  
  [Service]
-@@ -23,4 +22,4 @@ Slice=session.slice
+@@ -22,4 +21,4 @@ Slice=session.slice
  Environment=GIO_USE_VFS=local
  
  [Install]
 -WantedBy=pipewire.service
 +WantedBy=multi-user.target
--- 
-2.35.1
-
