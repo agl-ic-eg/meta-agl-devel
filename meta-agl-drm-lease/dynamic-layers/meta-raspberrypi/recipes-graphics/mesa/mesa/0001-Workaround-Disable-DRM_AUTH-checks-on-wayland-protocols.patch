@@ -1,4 +1,4 @@
-From f583672221b8451d03f739bc96428e97809d021a Mon Sep 17 00:00:00 2001
+From 991eb404c23c328b10894303be00c1036e6d3d3d Mon Sep 17 00:00:00 2001
 From: Damian Hobson-Garcia <dhobsong@igel.co.jp>
 Date: Tue, 5 Apr 2022 18:09:02 +0900
 Subject: [PATCH] Workaround: Disable DRM_AUTH check on wayland protocols
@@ -18,25 +18,26 @@ DRM lease and/or whether the import/export can succeed without
 authentication.  For now, just try to authenticate and ignore
 any failures.
 ---
- src/egl/drivers/dri2/platform_drm.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ src/egl/drivers/dri2/platform_drm.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
 diff --git a/src/egl/drivers/dri2/platform_drm.c b/src/egl/drivers/dri2/platform_drm.c
-index d0ab172..260a2c6 100644
+index 1a35ae3..0436f16 100644
 --- a/src/egl/drivers/dri2/platform_drm.c
 +++ b/src/egl/drivers/dri2/platform_drm.c
-@@ -508,7 +508,10 @@ dri2_drm_authenticate(_EGLDisplay *disp, uint32_t id)
+@@ -405,7 +405,11 @@ dri2_drm_authenticate(_EGLDisplay *disp, uint32_t id)
  {
     struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
  
--   return drmAuthMagic(dri2_dpy->fd, id);
+-   return drmAuthMagic(dri2_dpy->fd_render_gpu, id);
++   //return drmAuthMagic(dri2_dpy->fd_render_gpu, id);
 +   /* WORKAROUND: Ignore DRM_AUTH failures.  Ideally should only be done for
 +      clienits coming through a DRM lease, but just make it global for now */
-+   drmAuthMagic(dri2_dpy->fd, id);
++   drmAuthMagic(dri2_dpy->fd_render_gpu, id);
 +   return 0;
  }
  
  static void
 -- 
-2.17.1
+2.37.3
 
