@@ -1,7 +1,7 @@
-From 9ce172053169bbfd27ef8c18eb50ebac348f5bc2 Mon Sep 17 00:00:00 2001
-From: Damian Hobson-Garcia <dhobsong@igel.co.jp>
-Date: Mon, 11 Apr 2022 18:50:45 +0900
-Subject: [PATCH 1/3] backend-drm: Add method to import DRM fd
+From 46e5ec89cad434b1a1dd9ca49a35e1c6992c54c1 Mon Sep 17 00:00:00 2001
+From: Marius Vlad <marius.vlad@collabora.com>
+Date: Thu, 2 May 2024 19:11:06 +0300
+Subject: [PATCH 1/2] backend-drm: Add method to import DRM fd
 
 Allow the compositor to provide a file descriptor for a
 DRM device.
@@ -15,20 +15,21 @@ Having the DRM device management in the compositor allows for
 integrating a platform specific resource manager without having
 to add extra dependencies to the generic libweston code.
 
-%% original patch: 0001-backend-drm-Add-method-to-import-DRM-fd.patch
+Signed-off-by: Marius Vlad <marius.vlad@collabora.com>
+Signed-off-by: Damian Hobson-Garcia <dhobsong@igel.co.jp>
 ---
  include/libweston/backend-drm.h |  7 +++
- libweston/backend-drm/drm.c     | 75 ++++++++++++++++++++++++---------
- 2 files changed, 63 insertions(+), 19 deletions(-)
+ libweston/backend-drm/drm.c     | 78 ++++++++++++++++++++++++---------
+ 2 files changed, 64 insertions(+), 21 deletions(-)
 
 diff --git a/include/libweston/backend-drm.h b/include/libweston/backend-drm.h
-index af2da4a..2c12b17 100644
+index d47955c..889848a 100644
 --- a/include/libweston/backend-drm.h
 +++ b/include/libweston/backend-drm.h
-@@ -223,6 +223,13 @@ struct weston_drm_backend_config {
- 
- 	/** Use shadow buffer if using Pixman-renderer. */
- 	bool use_pixman_shadow;
+@@ -258,6 +258,13 @@ struct weston_drm_backend_config {
+ 	 * rendering device.
+ 	 */
+ 	char *additional_devices;
 +
 +	/** DRM device file descriptor to use
 +         *
@@ -40,7 +41,7 @@ index af2da4a..2c12b17 100644
  
  #ifdef  __cplusplus
 diff --git a/libweston/backend-drm/drm.c b/libweston/backend-drm/drm.c
-index 4278770..0707db7 100644
+index 8092789..4e78ad0 100644
 --- a/libweston/backend-drm/drm.c
 +++ b/libweston/backend-drm/drm.c
 @@ -40,6 +40,7 @@
@@ -49,9 +50,9 @@ index 4278770..0707db7 100644
  #include <sys/mman.h>
 +#include <sys/stat.h>
  #include <time.h>
+ #include <poll.h>
  
- #include <xf86drm.h>
-@@ -2670,29 +2671,22 @@ drm_device_changed(struct weston_compositor *compositor,
+@@ -3431,31 +3432,22 @@ drm_device_changed(struct weston_backend *backend,
  	wl_signal_emit(&compositor->session_signal, compositor);
  }
  
@@ -60,24 +61,26 @@ index 4278770..0707db7 100644
 - * sets b->drm.fd and b->drm.filename to the opened device.
 - */
  static bool
--drm_device_is_kms(struct drm_backend *b, struct udev_device *device)
-+drm_backend_update_kms_device(struct drm_backend *b, struct udev_device *device,
-+                const char *name, int drm_fd)
+-drm_device_is_kms(struct drm_backend *b, struct drm_device *device,
+-		  struct udev_device *udev_device)
++drm_backend_update_kms_device(struct drm_backend *b, struct drm_device *device,
++		  struct udev_device *udev_device, const char *name, int drm_fd)
  {
--	const char *filename = udev_device_get_devnode(device);
- 	const char *sysnum = udev_device_get_sysnum(device);
- 	dev_t devnum = udev_device_get_devnum(device);
+ 	struct weston_compositor *compositor = b->compositor;
+-	const char *filename = udev_device_get_devnode(udev_device);
+ 	const char *sysnum = udev_device_get_sysnum(udev_device);
+ 	dev_t devnum = udev_device_get_devnum(udev_device);
  	drmModeRes *res;
 -	int id = -1, fd;
 +	int id = -1;
  
 -	if (!filename)
+-		return false;
+-
+-	fd = weston_launcher_open(compositor->launcher, filename, O_RDWR);
+-	if (fd < 0)
 +	if (!name)
  		return false;
- 
--	fd = weston_launcher_open(b->compositor->launcher, filename, O_RDWR);
--	if (fd < 0)
--		return false;
  
 -	res = drmModeGetResources(fd);
 +	res = drmModeGetResources(drm_fd);
@@ -87,7 +90,7 @@ index 4278770..0707db7 100644
  
  	if (res->count_crtcs <= 0 || res->count_connectors <= 0 ||
  	    res->count_encoders <= 0)
-@@ -2701,7 +2695,7 @@ drm_device_is_kms(struct drm_backend *b, struct udev_device *device)
+@@ -3464,7 +3456,7 @@ drm_device_is_kms(struct drm_backend *b, struct drm_device *device,
  	if (sysnum)
  		id = atoi(sysnum);
  	if (!sysnum || id < 0) {
@@ -96,19 +99,19 @@ index 4278770..0707db7 100644
  		goto out_res;
  	}
  
-@@ -2711,9 +2705,9 @@ drm_device_is_kms(struct drm_backend *b, struct udev_device *device)
- 		weston_launcher_close(b->compositor->launcher, b->drm.fd);
- 	free(b->drm.filename);
+@@ -3474,9 +3466,9 @@ drm_device_is_kms(struct drm_backend *b, struct drm_device *device,
+ 		weston_launcher_close(compositor->launcher, device->drm.fd);
+ 	free(device->drm.filename);
  
--	b->drm.fd = fd;
-+	b->drm.fd = drm_fd;
- 	b->drm.id = id;
--	b->drm.filename = strdup(filename);
-+	b->drm.filename = strdup(name);
- 	b->drm.devnum = devnum;
+-	device->drm.fd = fd;
++	device->drm.fd = drm_fd;
+ 	device->drm.id = id;
+-	device->drm.filename = strdup(filename);
++	device->drm.filename = strdup(name);
+ 	device->drm.devnum = devnum;
  
  	drmModeFreeResources(res);
-@@ -2722,11 +2716,33 @@ drm_device_is_kms(struct drm_backend *b, struct udev_device *device)
+@@ -3485,11 +3477,34 @@ drm_device_is_kms(struct drm_backend *b, struct drm_device *device,
  
  out_res:
  	drmModeFreeResources(res);
@@ -122,10 +125,11 @@ index 4278770..0707db7 100644
 + * sets b->drm.fd and b->drm.filename to the opened device.
 + */
 +static bool
-+drm_device_is_kms(struct drm_backend *b, struct udev_device *device)
++drm_device_is_kms(struct drm_backend *b, struct drm_device *device, 
++		  struct udev_device *udev_device)
 +{
 +	int fd;
-+	const char *filename = udev_device_get_devnode(device);
++	const char *filename = udev_device_get_devnode(udev_device);
 +	if (!filename)
 +		return false;
 +
@@ -133,7 +137,7 @@ index 4278770..0707db7 100644
 +	if (fd < 0)
 +		return false;
 +
-+	if (!drm_backend_update_kms_device(b, device, filename, fd)) {
++	if (!drm_backend_update_kms_device(b, b->drm, udev_device, filename, fd)) {
 +		weston_launcher_close(b->compositor->launcher, fd);
 +		return false;
 +	}
@@ -144,33 +148,33 @@ index 4278770..0707db7 100644
  /*
   * Find primary GPU
   * Some systems may have multiple DRM devices attached to a single seat. This
-@@ -2814,6 +2830,25 @@ find_primary_gpu(struct drm_backend *b, const char *seat)
+@@ -3578,6 +3593,25 @@ find_primary_gpu(struct drm_backend *b, const char *seat)
  	return drm_device;
  }
  
 +static struct udev_device *
 +import_drm_device_fd(struct drm_backend *b, int fd)
 +{
-+	struct udev_device *device;
++	struct udev_device *udev_device;
 +	struct stat s;
 +
 +	if (fstat(fd, &s) < 0 || !S_ISCHR(s.st_mode))
 +		return NULL;
 +
-+	device = udev_device_new_from_devnum(b->udev, 'c', s.st_rdev);
-+	if (!device)
++	udev_device = udev_device_new_from_devnum(b->udev, 'c', s.st_rdev);
++	if (!udev_device)
 +		return NULL;
 +
-+	if (!drm_backend_update_kms_device(b, device, "imported DRM device fd", fd))
++	if (!drm_backend_update_kms_device(b, b->drm, udev_device, "imported DRM device fd", fd))
 +		return NULL;
 +
-+	return device;
++	return udev_device;
 +}
 +
  static struct udev_device *
- open_specific_drm_device(struct drm_backend *b, const char *name)
- {
-@@ -3038,7 +3073,9 @@ drm_backend_create(struct weston_compositor *compositor,
+ open_specific_drm_device(struct drm_backend *b, struct drm_device *device,
+ 			 const char *name)
+@@ -3904,7 +3938,9 @@ drm_backend_create(struct weston_compositor *compositor,
  	b->session_listener.notify = session_notify;
  	wl_signal_add(&compositor->session_signal, &b->session_listener);
  
@@ -178,9 +182,9 @@ index 4278770..0707db7 100644
 +	if (config->device_fd > 0)
 +		drm_device = import_drm_device_fd(b, config->device_fd);
 +	else if (config->specific_device)
- 		drm_device = open_specific_drm_device(b, config->specific_device);
+ 		drm_device = open_specific_drm_device(b, device,
+ 						      config->specific_device);
  	else
- 		drm_device = find_primary_gpu(b, seat_id);
 -- 
-2.17.1
+2.43.0
 
