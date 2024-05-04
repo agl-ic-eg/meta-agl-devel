@@ -1,6 +1,6 @@
-From d70ec96c2703c421bff55f5d2dce8d8aa5f8819b Mon Sep 17 00:00:00 2001
-From: Damian Hobson-Garcia <dhobsong@igel.co.jp>
-Date: Tue, 12 Apr 2022 15:12:27 +0900
+From 7963529fc8e3e17a9596ef27cccc5c1b9e065e30 Mon Sep 17 00:00:00 2001
+From: Marius Vlad <marius.vlad@collabora.com>
+Date: Fri, 3 May 2024 14:29:13 +0300
 Subject: [PATCH] Add drm-lease support
 
 Add an option to use a DRM lease instead of a DRM device
@@ -8,23 +8,25 @@ as the video output.  This will allow agl-compositor to
 operate alongside other applications output via a DRM
 lease.
 
+Signed-off-by: Marius Vlad <marius.vlad@collabora.com>
 Signed-off-by: Damian Hobson-Garcia <dhobsong@igel.co.jp>
+Change-Id: I78f8b9425280d4c0606003cd86f4cf30c065b888
 ---
  meson.build          |  6 +++++
- meson_options.txt    |  7 ++++++
+ meson_options.txt    |  8 +++++++
  src/compositor.c     |  7 ++++++
  src/drm-lease.c      | 52 ++++++++++++++++++++++++++++++++++++++++++++
  src/drm-lease.h      | 19 ++++++++++++++++
  src/ivi-compositor.h |  2 ++
- 6 files changed, 93 insertions(+)
+ 6 files changed, 94 insertions(+)
  create mode 100644 src/drm-lease.c
  create mode 100644 src/drm-lease.h
 
 diff --git a/meson.build b/meson.build
-index 0958f06..cc5085f 100644
+index aa811ad..f5a98e8 100644
 --- a/meson.build
 +++ b/meson.build
-@@ -194,6 +194,12 @@ elif policy_to_install == 'rba'
+@@ -163,6 +163,12 @@ elif policy_to_install == 'rba'
    message('Installing rba policy')
  endif
  
@@ -38,12 +40,20 @@ index 0958f06..cc5085f 100644
  # In order to look for headers in a specific directory you can use args :
  # '-I/extra/include/dir, but this should only be used in exceptional cases for
 diff --git a/meson_options.txt b/meson_options.txt
-index dd1f3c0..89de273 100644
+index 7c0e103..e0463f4 100644
 --- a/meson_options.txt
 +++ b/meson_options.txt
-@@ -5,3 +5,10 @@ option(
+@@ -5,6 +5,7 @@ option(
  	value: 'allow-all',
  	description: 'Default policy when no specific policy was set'
+ )
++
+ option(
+         'grpc-proxy',
+         type: 'boolean',
+@@ -24,3 +25,10 @@ option(
+         value: '/usr/bin/Xwayland',
+         description: 'Xwayland: path to installed Xwayland binary'
  )
 +
 +option(
@@ -53,49 +63,50 @@ index dd1f3c0..89de273 100644
 +	description: 'Support for running weston with a leased DRM Master'
 +)
 diff --git a/src/compositor.c b/src/compositor.c
-index 634c468..f328a99 100644
+index 078157a..156a0ae 100644
 --- a/src/compositor.c
 +++ b/src/compositor.c
-@@ -64,6 +64,8 @@
- #include <waltham-transmitter/transmitter_api.h>
- #endif
+@@ -57,6 +57,8 @@
+ #include "config.h"
+ #include "agl-shell-server-protocol.h"
  
 +#include "drm-lease.h"
 +
- static int cached_tm_mday = -1;
- static struct weston_log_scope *log_scope;
- 
-@@ -904,11 +906,13 @@ load_drm_backend(struct ivi_compositor *ivi, int *argc, char *argv[])
- 	int use_pixman = 0;
+ #ifdef HAVE_REMOTING
+ #include "remote.h"
+ #endif
+@@ -1069,6 +1071,7 @@ load_drm_backend(struct ivi_compositor *ivi, int *argc, char *argv[],
+ 	bool force_pixman = false;
  	bool use_shadow;
  	bool without_input = false;
 +	char *drm_lease_name = NULL;
- 	int ret;
  
  	const struct weston_option options[] = {
  		{ WESTON_OPTION_STRING, "seat", 0, &config.seat_id },
- 		{ WESTON_OPTION_STRING, "drm-device", 0, &config.specific_device },
-+		{ WESTON_OPTION_STRING, "drm-lease", 0, &drm_lease_name },
- 		{ WESTON_OPTION_BOOLEAN, "current-mode", 0, &use_current_mode },
- 		{ WESTON_OPTION_BOOLEAN, "use-pixman", 0, &use_pixman },
- 		{ WESTON_OPTION_BOOLEAN, "continue-without-input", false, &without_input }
-@@ -916,6 +920,7 @@ load_drm_backend(struct ivi_compositor *ivi, int *argc, char *argv[])
- 
- 	parse_options(options, ARRAY_LENGTH(options), argc, argv);
- 	config.use_pixman = use_pixman;
+@@ -1094,6 +1097,7 @@ load_drm_backend(struct ivi_compositor *ivi, int *argc, char *argv[],
+ 				       &config.pageflip_timeout, 0);
+ 	weston_config_section_get_bool(section, "pixman-shadow", &use_shadow, 1);
+ 	config.use_pixman_shadow = use_shadow;
 +	config.device_fd = get_drm_lease(&ivi->drm_lease, drm_lease_name);
- 	ivi->cmdline.use_current_mode = use_current_mode;
  
- 	section = weston_config_get_section(ivi->config, "core", NULL, NULL);
-@@ -947,6 +952,7 @@ load_drm_backend(struct ivi_compositor *ivi, int *argc, char *argv[])
+ 	if (without_input)
+ 		ivi->compositor->require_input = !without_input;
+@@ -1114,12 +1118,14 @@ load_drm_backend(struct ivi_compositor *ivi, int *argc, char *argv[],
+ 		goto error;
+ 	}
+ 
++	free(drm_lease_name);
+ 	load_remoting_plugin(ivi, ivi->config);
+ 
+ 	return 0;
+ 
  error:
  	free(config.gbm_format);
- 	free(config.seat_id);
 +	free(drm_lease_name);
- 	return ret;
+ 	free(config.seat_id);
+ 	return -1;
  }
- 
-@@ -1833,6 +1839,7 @@ error_compositor:
+@@ -2263,6 +2269,7 @@ error_compositor:
  	free(modules);
  	modules = NULL;
  
@@ -187,25 +198,25 @@ index 0000000..9fdc428
 +#endif
 +#endif /* DRM_LEASE_H */
 diff --git a/src/ivi-compositor.h b/src/ivi-compositor.h
-index bf96fc7..fcf11bf 100644
+index 695cf95..e3df79a 100644
 --- a/src/ivi-compositor.h
 +++ b/src/ivi-compositor.h
-@@ -35,6 +35,7 @@
- #include <libweston-desktop/libweston-desktop.h>
+@@ -36,6 +36,7 @@
+ #include <libweston/desktop.h>
  
  #include "remote.h"
 +#include "drm-lease.h"
  
  #include "agl-shell-server-protocol.h"
  
-@@ -114,6 +115,7 @@ struct ivi_compositor {
- 	struct weston_layer fullscreen;
+@@ -145,6 +146,7 @@ struct ivi_compositor {
  
+ 	bool need_ivi_output_relayout;
  	struct wl_list child_process_list;
 +	struct dlm_lease *drm_lease;
  };
  
  struct ivi_surface;
 -- 
-2.35.1
+2.43.0
 
