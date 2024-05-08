@@ -6,16 +6,13 @@ LIC_FILES_CHKSUM = "file://LICENSE;md5=1f1a56bb2dadf5f2be8eb342acf4ed79"
 
 DEPENDS = "weston virtual/libgles2 pixman wayland-native"
 
+PV = "2.3.2+git${SRCPV}"
+
 SRC_URI = " \
     git://github.com/COVESA/${BPN}.git;protocol=https;branch=master \
-    file://0001-ivi-input-controller-update-to-weston-7-header-files.patch  \
-    file://0002-ivi-id-agent-update-to-weston-7-header-files.patch \
-    file://0003-ivi-id-agent-update-dependencies-to-build-on-weston-.patch \
-    file://0004-ivi-id-agent-update-dependencies-to-build-on-weston-.patch \
-    file://0005-Fix-buld-error-in-krikston.patch \
-    file://0006-Drop-weston-6-support-and-adjust-weston-7-8-10.patch \
-    "
-SRCREV = "f6911a11dc911a5bcb380d0895db6cfd533a3569"
+    file://0001-Update-libweston-to-version-13.patch \
+"
+SRCREV = "60d616ad3abd925956207b9b6ff981afa004e792"
 
 S = "${WORKDIR}/git"
 
