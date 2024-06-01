@@ -33,7 +33,7 @@ install_container_images() {
         image=${c#*:}
         name=${image#guest-image-}
         rm -f "${DEPLOY_DIR_IMAGE}/${image}.ext4"
-        src="${TOPDIR}/tmp-${config}/deploy/images/${MACHINE}/${image}-${MACHINE}${MACHINE_SUFFIX}.ext4"
+        src="${TOPDIR}/tmp-${config}/deploy/images/${MACHINE}/${image}-${MACHINE}${MACHINE_SUFFIX}${IMAGE_NAME_SUFFIX}.ext4"
         bbnote "Installing ${src}"
         ln -s ${src} "${DEPLOY_DIR_IMAGE}/${image}.ext4"
     done
