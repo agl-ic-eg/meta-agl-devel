@@ -19,13 +19,16 @@ SRC_URI = "git://git.automotivelinux.org/apps/mominavi;protocol=https;branch=${A
            file://mominavi.service \
            file://mominavi \
           "
-SRCREV = "e08336ba085d798e88e33c24b850956d6e50cc51"
+SRCREV = "10c3f7996d4bbe04d237baff2ef16573bc9eb9ed"
 
 S = "${WORKDIR}/git"
 
 inherit qmake5 systemd
 
 MOMIMAP_MAPBOX_ACCESS_TOKEN ??= "YOU_NEED_TO_SET_IT_IN_LOCAL_CONF"
+MOMIMAP_MAPBOX_STYLE ??= "mapbox://styles/wata2ki/ckoy853ue11a117nss0uxut76"
+MOMIMAP_INITIAL_LATITUDE ??= "36.129"
+MOMIMAP_INITIAL_LONGITUDE ??= "-115.1533"
 QT_INSTALL_PREFIX = "/usr"
 
 do_configure:prepend() {
@@ -41,6 +44,9 @@ do_install:append() {
     install -m 0755 ${WORKDIR}/mominavi ${D}${sysconfdir}/default/
 
     echo 'MOMIMAP_MAPBOX_ACCESS_TOKEN=${MOMIMAP_MAPBOX_ACCESS_TOKEN}' >> ${D}${sysconfdir}/default/mominavi
+    echo 'MOMIMAP_MAPBOX_STYLE=${MOMIMAP_MAPBOX_STYLE}' >> ${D}${sysconfdir}/default/mominavi
+    echo 'MOMIMAP_INITIAL_LATITUDE=${MOMIMAP_INITIAL_LATITUDE}' >> ${D}${sysconfdir}/default/mominavi
+    echo 'MOMIMAP_INITIAL_LONGITUDE=${MOMIMAP_INITIAL_LONGITUDE}' >> ${D}${sysconfdir}/default/mominavi
 }
 
 FILES:${PN} += " \
