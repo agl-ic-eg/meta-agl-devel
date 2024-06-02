@@ -33,7 +33,5 @@ FILES:${PN} += " \
 RDEPENDS:${PN} = " \
     lighttpd \
     lighttpd-module-cgi \
-    lighttpd-module-alias \
-    lighttpd-module-access \
     lighttpd-module-accesslog \
     "
