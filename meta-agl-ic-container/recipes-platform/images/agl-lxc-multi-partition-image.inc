@@ -6,15 +6,13 @@ require recipes-platform/images/agl-lxc-multiconfig-build.inc
 OUT_OF_TREE_CONTAINER_IMAGE_DEPLOY_DIR ??= ""
 
 OUT_OF_TREE_CONTAINER_IMAGES ??= " \
-    agl-ivi-demo-platform \
-    agl-ivi-demo-platform-flutter \
-    agl-ivi-demo-platform-html5 \
+    agl-ivi-demo-qt \
+    agl-ivi-demo-flutter \
 "
 
 OUT_OF_TREE_CONTAINER_CONFIGS ??= " \
     cm-config-agl-qt-ivi-demo \
     cm-config-agl-flutter-ivi-demo \
-    cm-config-agl-html5-ivi-demo \
 "
 
 CONTAINER_EXCHANGE_DEMO_UI ??= "momiweb momikey"
@@ -42,7 +40,7 @@ install_container_images() {
         er=0
         for image in ${OUT_OF_TREE_CONTAINER_IMAGES}; do
             rm -f "${DEPLOY_DIR_IMAGE}/${image}.ext4"
-            src="${OUT_OF_TREE_CONTAINER_IMAGE_DEPLOY_DIR}/images/${MACHINE}/${image}-${MACHINE}${MACHINE_SUFFIX}.ext4"
+            src="${OUT_OF_TREE_CONTAINER_IMAGE_DEPLOY_DIR}/images/${MACHINE}/${image}-${MACHINE}${MACHINE_SUFFIX}${IMAGE_NAME_SUFFIX}.ext4"
             if [ ! -e ${src} ]; then
                 bberror "File not found at ${src}."
                 er=1
