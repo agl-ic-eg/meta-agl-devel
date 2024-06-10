@@ -1,0 +1,35 @@
+From f2e5939476630add3bf2c9254f72a0b57101f848 Mon Sep 17 00:00:00 2001
+From: Marius Vlad <marius.vlad@collabora.com>
+Date: Mon, 10 Jun 2024 12:02:33 +0300
+Subject: [PATCH] compositor: Add missing drm-lease-name
+
+This was an oversight from commit 7963529fc8e3e, 'Add drm-lease
+support', which backported the drm-lease support in the AGL compositor
+for next release.
+
+Without a drm-lease-name, the device_id will be an negative integer
+resulting in not using the parameter. This should fix leasing with the
+AGL compositor.
+
+Bug-AGL: SPEC-5160
+Signed-off-by: Marius Vlad <marius.vlad@collabora.com>
+Change-Id: I4282c115d2038852f6a56a77ce6ab81f2b8f62b4
+---
+ src/compositor.c | 1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/src/compositor.c b/src/compositor.c
+index 156a0ae..65c61d8 100644
+--- a/src/compositor.c
++++ b/src/compositor.c
+@@ -1076,6 +1076,7 @@ load_drm_backend(struct ivi_compositor *ivi, int *argc, char *argv[],
+ 	const struct weston_option options[] = {
+ 		{ WESTON_OPTION_STRING, "seat", 0, &config.seat_id },
+ 		{ WESTON_OPTION_STRING, "drm-device", 0, &config.specific_device },
++		{ WESTON_OPTION_STRING, "drm-lease-name", 0, &drm_lease_name },
+ 		{ WESTON_OPTION_BOOLEAN, "current-mode", 0, &use_current_mode },
+ 		{ WESTON_OPTION_BOOLEAN, "use-pixman", 0, &force_pixman },
+ 		{ WESTON_OPTION_BOOLEAN, "continue-without-input", false, &without_input }
+-- 
+2.43.0
+
