@@ -5,6 +5,8 @@ LICENSE = "MIT"
 
 CLANGSDK = "1"
 
+IMAGE_FEATURES += "ssh-server-openssh"
+
 IMAGE_INSTALL += "\
     weston-ini-conf-landscape \
     \
@@ -13,10 +15,7 @@ IMAGE_INSTALL += "\
     flutter-engine-sdk-dev \
     \
     flutter-gallery \
-    flutter-test-texture-egl \
+    meta-flutter-tests-textures-test-egl \
     \
-    "
+"
 
-IMAGE_FEATURES += "\
-    ssh-server-openssh \
-    "
