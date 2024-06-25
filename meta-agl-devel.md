@@ -40,7 +40,5 @@ The following list provides a summary of these sub-layers:
 * `meta-oem-production-readiness`: Provides libraries and software packages of
   IVI product readiness
 
-* `meta-agl-flutter`: Provides Flutter support.
-
 * `templates`: Feature templates that support the `meta-agl-devel` layer.
 
