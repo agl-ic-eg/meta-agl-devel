@@ -8,11 +8,11 @@ HOSTTOOLS += "gfortran"
 # FIXME check if needed and/or submit upstream
 BBCLASSEXTEND:pn-python3-charset-normalizer = "native nativesdk"
 
-IMAGE_INSTALL:append = " \
+PACKAGECONFIG:pn-openblas := "cblas lapack lapack-deprecated"
+
+FEATURE_PACKAGES_agl-offline-voice-agent:append = " \
     python3-snips-inference-agl \ 
     snips-model-agl \
-    python3-rasa \
-    rasa-model-agl \
     vosk \
     vosk-kaldi \
     vosk-server \
@@ -21,11 +21,17 @@ IMAGE_INSTALL:append = " \
     python3-sounddevice \
     flutter-voiceassistant \
     agl-service-voiceagent \
+    whisper \
+    openai-whisper-base \
     "
 
-PREFERRED_RPROVIDER_vosk-model ?= "vosk-model-small-en-us"
+EXTRA_IMAGE_FEATURES += "agl-offline-voice-agent"
 
+PREFERRED_RPROVIDER_vosk-model ?= "vosk-model-small-en-us"
+PREFERRED_RPROVIDER_whisper-model ?= "openai-whisper-base"
 
 # bump bazel limits
 BAZEL_JOBS = "HOST_CPUS*.4"
 BAZEL_MEM = "HOST_RAM*.4"
+
+LICENSE_FLAGS_ACCEPTED += "commercial_ffmpeg"

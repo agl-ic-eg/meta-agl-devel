@@ -24,6 +24,7 @@ This layer is currently in development and integrates the Vosk, Snips (Inference
 ## External Dependencies
 This layer depends on the following external layers:
 - [meta-tensorflow](https://git.yoctoproject.org/meta-tensorflow)
+- [meta-python-ai](https://github.com/zboszor/meta-python-ai/tree/scarthgap)
 
 ## Working Features
 The following features are currently working in the `meta-offline-voice-agent` layer:
@@ -82,6 +83,7 @@ Currently, the following targets are fully supported:
 - QEMU x86-64 (work in progress)
 
 ## Maintainers
+- Anuj Solanki <anuj603362@gmail.com>
 - Malik Talha <talhamalik727x@gmail.com>
 - Aman Arora <aman.arora9848@gmail.com>
 

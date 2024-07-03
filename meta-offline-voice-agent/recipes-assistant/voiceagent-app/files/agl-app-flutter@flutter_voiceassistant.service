@@ -1,0 +1,9 @@
+[Unit]
+Description=flutter_voiceassistant
+
+[Service]
+Type=simple
+User=agl-driver
+EnvironmentFile=/etc/default/flutter
+Environment=XDG_RUNTIME_DIR=/run/user/1001/
+ExecStart=/usr/bin/flutter-auto --b=/flutter/flutter_voiceassistant/${FLUTTER_VERSION}/${FLUTTER_RUNTIME} --xdg-shell-app-id=flutter_voiceassistant

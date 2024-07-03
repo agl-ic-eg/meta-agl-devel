@@ -1,0 +1,36 @@
+From 39ab95117545461b06836d3033002f040f34624d Mon Sep 17 00:00:00 2001
+From: Anuj Solanki <anuj603362@gmail.com>
+Date: Fri, 14 Jun 2024 19:36:03 +0200
+Subject: [PATCH] Structlog setup.py fix
+
+This patch updates setup.py for structlog to correctly read the
+long_description from README.md and removes the dynamic field.
+
+Upstream-Status: Inaproppriate.
+Signed-off-by: Anuj Solanki <anuj603362@gmail.com>
+---
+ setup.py | 8 +++++++-
+ 1 file changed, 7 insertions(+), 1 deletion(-)
+
+diff --git a/setup.py b/setup.py
+index 4bc2b79..6d2a048 100644
+--- a/setup.py
++++ b/setup.py
+@@ -1,10 +1,16 @@
+ from setuptools import setup, find_packages
+ 
++def read_readme():
++    with open("README.md", "r", encoding="utf-8") as f:
++        return f.read()
++
++
+ setup(
+     name="structlog",
+     version="23.1.0",
+-    dynamic=["readme", "version"],
+     description="Structured Logging for Python",
++    long_description=read_readme(),
++    long_description_content_type="text/markdown",
+     author="Hynek Schlawack",
+     author_email="hs@ox.cx",
+     url="https://github.com/hynek/structlog",

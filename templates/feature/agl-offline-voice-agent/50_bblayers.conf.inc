@@ -4,5 +4,9 @@ AGL_META_PYTHON = "${METADIR}/external/meta-openembedded/meta-python"
 
 BBLAYERS =+ " \
     ${METADIR}/meta-agl-devel/meta-offline-voice-agent \
-    ${METADIR}/external/meta-tensorflow \
+    ${METADIR}/external/meta-python-ai \
 "
+
+# package in meta-oe is newer
+BBMASK += "meta-tensorflow/recipes-devtools/python/python3-gast_0.4.0.bb"
+

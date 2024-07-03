@@ -30,6 +30,7 @@ SYSTEMD_SERVICE:${PN} = "agl-service-voiceagent.service"
 do_compile:prepend() {
     # Generate proto files and move them to 'generated/' directory
     python3 -m grpc_tools.protoc -I${S}/agl_service_voiceagent/protos --python_out=${S}/agl_service_voiceagent/generated --grpc_python_out=${S}/agl_service_voiceagent/generated voice_agent.proto
+    python3 -m grpc_tools.protoc -I${S}/agl_service_voiceagent/protos --python_out=${S}/agl_service_voiceagent/generated --grpc_python_out=${S}/agl_service_voiceagent/generated audio_processing.proto
 
     # Replace all placeholders with actual values
     sed -i 's|PYTHON_DIR|${PYTHON_SITEPACKAGES_DIR}|g' ${S}/agl_service_voiceagent/config.ini
@@ -62,9 +63,9 @@ RDEPENDS:${PN} += " \
     python3-grpcio-tools \
     python3-pygobject \
     kuksa-client \
-    python3-rasa \
     python3-snips-inference-agl \
     vosk \
+    whisper \
     "
 
 FILES:${PN} += "/usr/share/nlu/"

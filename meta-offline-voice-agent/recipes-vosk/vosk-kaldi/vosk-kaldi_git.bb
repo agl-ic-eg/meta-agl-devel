@@ -6,6 +6,7 @@ LIC_FILES_CHKSUM = "file://../COPYING;md5=a10e448a64dbd3723ff3fb2f397fba2e \
 
 SRC_URI = "git://github.com/alphacep/kaldi.git;protocol=https;branch=vosk \
            file://0001-Fixes-for-shared-library-compilation.patch \
+           file://0001-Fixup-wrappers-for-compilation-with-openblas-0.3.27.patch;patchdir=.. \
            "
 
 PV = "1.0+git${SRCPV}"

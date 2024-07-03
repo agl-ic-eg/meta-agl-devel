@@ -1,7 +1,6 @@
 [Unit]
 Description=AGL Voice Agent Service
 After=network.target
-Requires=rasa-service.service
 
 [Service]
 ExecStart=/usr/bin/voiceagent-service run-server --default
