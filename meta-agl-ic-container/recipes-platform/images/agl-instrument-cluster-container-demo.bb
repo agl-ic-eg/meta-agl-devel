@@ -11,9 +11,6 @@ CONTAINER_IMAGES ?= "agl-container-cluster:guest-image-cluster-demo \
 IMAGE_INSTALL += " \
     kernel-modules \
     alsa-utils \
-    packagegroup-pipewire \
-    pipewire-ic-ipc \
-    wireplumber-config-agl \
 "
 
 # packages required for network bridge settings via lxc-net

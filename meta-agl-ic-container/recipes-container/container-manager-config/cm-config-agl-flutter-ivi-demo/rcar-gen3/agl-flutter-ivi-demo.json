@@ -100,6 +100,15 @@
 				"exclusive": 	0
 			},
 			{
+				"type": 		"devdir",
+				"from": 		"/dev/snd",
+				"to":			"dev/snd",
+				"devnode":		"/dev/snd/controlC0",
+				"optional": 		1,
+				"wideallow": 	1,
+				"exclusive": 	0
+			},
+			{
 				"type": 		"devnode",
 				"from": 		"/dev/pvr_sync",
 				"to":			"dev/pvr_sync",
