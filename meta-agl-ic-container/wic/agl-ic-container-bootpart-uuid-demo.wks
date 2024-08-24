@@ -7,4 +7,4 @@ part / --source rootfs --fstype=ext4 --label host --align 4096 --size 1024
 part --source rawcopy --sourceparams="file=guest-image-cluster-demo.ext4"
 part --source rawcopy --sourceparams="file=guest-image-ivi-demo.ext4"
 part --source rawcopy --sourceparams="file=agl-ivi-demo-qt.ext4"
-part --source rawcopy --sourceparams="file=cm-config-agl-flutter-ivi-demo.ext4"
+part --source rawcopy --sourceparams="file=agl-ivi-demo-flutter.ext4"
