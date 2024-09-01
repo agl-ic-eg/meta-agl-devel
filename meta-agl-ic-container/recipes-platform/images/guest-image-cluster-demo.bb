@@ -13,7 +13,7 @@ IMAGE_INSTALL += " \
     pipewire-ic-ipc \
 "
 
-IMAGE_INSTALL:append:raspberrypi4 = " mesa-megadriver"
+IMAGE_INSTALL:append:rpi = " mesa-megadriver"
 
 IMAGE_OVERHEAD_FACTOR = "0"
 EXTRA_IMAGECMD:append = " -L agl-cluster"

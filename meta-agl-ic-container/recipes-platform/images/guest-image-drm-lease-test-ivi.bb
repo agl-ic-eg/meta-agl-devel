@@ -10,4 +10,4 @@ IMAGE_INSTALL += " \
     weston-ini-conf-drm-lease-test-ivi \
 "
 
-IMAGE_INSTALL:append:raspberrypi4 = " mesa-megadriver"
+IMAGE_INSTALL:append:rpi = " mesa-megadriver"
