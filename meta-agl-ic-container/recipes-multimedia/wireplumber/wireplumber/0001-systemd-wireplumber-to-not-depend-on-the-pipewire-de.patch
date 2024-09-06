@@ -1,4 +1,4 @@
-From 7c389b72b5a009ca56f90bbc531074b55bdcb5a9 Mon Sep 17 00:00:00 2001
+From 512e9ee130841e3b6c379511234afc07d66d99d7 Mon Sep 17 00:00:00 2001
 From: Ashok Sidipotu <ashok.sidipotu@collabora.com>
 Date: Mon, 28 Feb 2022 06:46:19 +0530
 Subject: [PATCH] systemd: changes to run wireplumber instances in containers
@@ -14,11 +14,11 @@ Upstream-Status: Inappropriate [configuration]
  2 files changed, 5 insertions(+), 8 deletions(-)
 
 diff --git a/src/systemd/system/wireplumber@.service.in b/src/systemd/system/wireplumber@.service.in
-index 29e65598..686a93d3 100644
+index 0766d4e0..50ddf4c6 100644
 --- a/src/systemd/system/wireplumber@.service.in
 +++ b/src/systemd/system/wireplumber@.service.in
 @@ -5,8 +5,7 @@
- # wireplumber@policy.service loads policy.conf, etc.
+ # wireplumber@policy.service loads the "policy" profile, etc.
  [Unit]
  Description=Multimedia Service Session Manager (%i)
 -After=pipewire.service
@@ -29,7 +29,7 @@ index 29e65598..686a93d3 100644
  [Service]
 @@ -19,9 +18,8 @@ Type=simple
  AmbientCapabilities=CAP_SYS_NICE
- ExecStart=@WP_BINARY@ -c %i.conf
+ ExecStart=@WP_BINARY@ -p %i
  Restart=on-failure
 -User=pipewire
 -Environment=PIPEWIRE_RUNTIME_DIR=%t/pipewire
@@ -40,11 +40,11 @@ index 29e65598..686a93d3 100644
 -WantedBy=pipewire.service
 +WantedBy=multi-user.target
 diff --git a/src/systemd/user/wireplumber@.service.in b/src/systemd/user/wireplumber@.service.in
-index a0b10f7b..8fbd6bd7 100644
+index 5c1096fc..7368f683 100644
 --- a/src/systemd/user/wireplumber@.service.in
 +++ b/src/systemd/user/wireplumber@.service.in
 @@ -5,8 +5,7 @@
- # wireplumber@policy.service loads policy.conf, etc.
+ # wireplumber@policy.service loads the "policy" profile, etc.
  [Unit]
  Description=Multimedia Service Session Manager (%i)
 -After=pipewire.service
