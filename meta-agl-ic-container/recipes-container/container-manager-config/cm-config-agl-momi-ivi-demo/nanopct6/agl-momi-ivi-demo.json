@@ -1,0 +1,202 @@
+{
+	"name": "agl-momi-ivi-demo",
+	"role": "ivi",
+	"base": {
+		"autoboot": true,
+		"bootpriority": 10,
+		"rootfs": {
+			"path": "/opt/container/guests/agl-momi-ivi-demo/rootfs",
+			"filesystem":	"ext4",
+			"mode":		"rw",
+			"blockdev": [
+				"/dev/mmcblk0p5",
+				"/dev/mmcblk0p5"
+			]
+		},
+		"lifecycle": {
+			"halt": "SIGRTMIN+3",
+			"reboot": "SIGTERM",
+			"timeout": 15000
+		},
+		"cap": {
+			"drop": "sys_module mac_admin mac_override",
+			"keep": ""
+		},
+		"environment": [
+			"PIPEWIRE_RUNTIME_DIR=/var",
+			"HOME=/home/root"
+		]
+	},
+	"resource": [
+		{
+			"type":		"cgroup",
+			"object":	"cpuset.cpus",
+			"value":	"0-6"
+		},
+		{
+			"type":		"prlimit",
+			"object":	"rtprio",
+			"value":	"50"
+		}
+	],
+	"fs": {
+		"mount": [
+			{
+				"type": 	"filesystem",
+				"from": 	"tmpfs",
+				"to":		"run",
+				"fstype":	"tmpfs",
+				"option": 	"defaults 0 0"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/sys/kernel/security",
+				"to":		"sys/kernel/security",
+				"fstype":	"none",
+				"option": 	"ro,bind,optional 0 0"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/udev/data",
+				"to":		"run/udev/data",
+				"fstype":	"none",
+				"option": 	"ro,bind,optional,create=dir"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/drm-lease-manager/lease-ivi",
+				"to":		"var/display/drm-lease-manager/lease",
+				"fstype":	"none",
+				"option": 	"bind,create=file"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/dlt",
+				"to":		"run/dlt",
+				"fstype":	"none",
+				"option": 	"bind,optional,create=dir"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/opt/container/guests/agl-momi-ivi-demo/system.conf",
+				"to":		"etc/systemd/system.conf.d/10-environment.conf",
+				"fstype":	"none",
+				"option": 	"bind,optional,create=file"
+			}
+		]
+	},
+	"device": {
+		"static": [
+			{
+				"type": 		"devdir",
+				"from": 		"/dev/dri",
+				"to":			"dev/dri",
+				"devnode":		"/dev/dri/card0",
+				"optional": 		0,
+				"wideallow": 	1,
+				"exclusive": 	0
+			},
+			{
+				"type": 		"devdir",
+				"from": 		"/dev/input",
+				"to":			"dev/input",
+				"devnode":		"/dev/input/event0",
+				"optional": 		1,
+				"wideallow": 	1,
+				"exclusive": 	0
+			},
+			{
+				"type": 		"devdir",
+				"from": 		"/dev/snd",
+				"to":			"dev/snd",
+				"devnode":		"/dev/snd/controlC0",
+				"optional": 		1,
+				"wideallow": 	1,
+				"exclusive": 	0
+			},
+			{
+				"type": 		"devnode",
+				"from": 		"/dev/mali0",
+				"to":			"dev/mali0",
+				"devnode":		"/dev/mali0",
+				"optional": 		0,
+				"wideallow": 	0,
+				"exclusive": 	0
+			}
+		],
+		"dynamic": [
+			{
+				"devpath": "/devices/platform/usbdrd3_0/fc000000.usb/",
+				"items": [
+					{
+						"subsystem": "usb",
+						"rule": {
+							"devtype": ["usb_device","usb_interface"],
+							"action": ["add", "remove"]
+						},
+						"behavior": {
+							"injection": 1,
+							"devnode": 0,
+							"allow": 0,
+							"permission": "rw"
+						}
+					},
+					{
+						"subsystem": "block",
+						"rule": {
+							"action": ["add", "remove","change"],
+							"extra" : [
+								{
+									"checker": "exclude-fs",
+									"value": "ext4"
+								}
+							]
+						},
+						"behavior": {
+							"injection": 1,
+							"devnode": 0,
+							"allow": 1,
+							"permission": "rwm"
+						}
+					}
+				]
+			},
+			{
+				"devpath": "/devices/platform/usbdrd3_0/fc000000.usb/",
+				"items": [
+					{
+						"subsystem": "hid",
+						"rule": {
+							"action": ["add", "remove"]
+						},
+						"behavior": {
+							"injection": 1,
+							"devnode": 1,
+							"allow": 1,
+							"permission": "rw"
+						}
+					}
+				]
+			}
+		]
+	},
+	"network": {
+		"static": [
+			{
+				"type": 	"veth",
+				"param": {
+					"name":	"eth0",
+					"link":	"lxcbr0",
+					"flags":	"up",
+					"hwaddr":	"00:16:3e:xx:xx:xx",
+					"mode": "bridge"
+				}
+			}
+		],
+		"dynamic": [
+			{
+				"ifname": 	"vxcan2"
+			}
+		]
+	}
+}
