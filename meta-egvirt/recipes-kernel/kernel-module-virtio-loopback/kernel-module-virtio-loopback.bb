@@ -1,13 +1,13 @@
 SUMMARY = "Virtio-loopback driver"
 DESCRIPTION = "Virtio-Loopback kernel driver"
 LICENSE = "GPL-2.0-or-later"
-LIC_FILES_CHKSUM = "file://README.md;md5=c912e5645ed908bc9570ba05c92b3723"
+LIC_FILES_CHKSUM = "file://README.md;md5=a504d51f03528972061035344480790b"
 
 inherit module
 
 SRC_URI = "git://gerrit.automotivelinux.org/gerrit/src/virtio/virtio-loopback-driver.git;protocol=http;branch=${AGL_BRANCH}"
 
-SRCREV = "f9c1c04c0a3c2a133d969c3aae8490cb25145985"
+SRCREV = "8948c9808eded80772de98cd4e8dd0cc71fdbe17"
 
 S = "${WORKDIR}/git"
 
