@@ -1,7 +1,7 @@
 [Unit]
 Description=AGL Cluster Reference GUI
-After=multi-user.target weston.service
-PartOf=cluster-service.service weston.service
+After=multi-user.target
+PartOf=cluster-service.service
 
 [Service]
 EnvironmentFile=/etc/default/cluster

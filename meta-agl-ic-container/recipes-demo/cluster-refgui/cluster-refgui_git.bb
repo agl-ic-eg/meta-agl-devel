@@ -13,11 +13,11 @@ SRC_URI = "git://git.automotivelinux.org/src/cluster-refgui;protocol=https;branc
            file://cluster.service \
            file://cluster \
 "
-SRCREV = "cbb63f0e45340f6dd2cc9f360ed4da15c745186f"
+SRCREV = "5c8f09d2c3c99f621b467ed5c1be4fac3a708e85"
 
 S = "${WORKDIR}/git"
 
-inherit cmake cmake_qt5 systemd pkgconfig
+inherit cmake qt6-cmake systemd pkgconfig
 
 # NOTE:
 # The app currently assumes the mp4 video file is in the same
@@ -42,9 +42,6 @@ RDEPENDS:${PN} = " \
     qtbase \
     qtdeclarative \
     qt3d \
-    qtgraphicaleffects \
     qtmultimedia \
-    qtquickcontrols \
-    qtquickcontrols2 \
     qtwayland \
 "

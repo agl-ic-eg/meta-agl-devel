@@ -1,9 +1,6 @@
-XDG_RUNTIME_DIR=/run/user/0
-QT_QPA_PLATFORM=wayland-egl
+QT_QPA_PLATFORM=eglfs
+QT_QPA_EGLFS_DRMLEASE=lease
+DLM_RUNTIME_PATH=/var/display/drm-lease-manager
 QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/
 QT_WAYLAND_DISABLE_WINDOWDECORATION=1
 QT_QPA_FONTDIR=/usr/share/fonts/truetype
-QT_WAYLAND_SHELL_INTEGRATION=xdg-shell
-QML_IMPORT_PATH=/usr/lib/qml/
-QML2_IMPORT_PATH=/usr/lib/qml/
-WAYLAND_DISPLAY=wayland-1
