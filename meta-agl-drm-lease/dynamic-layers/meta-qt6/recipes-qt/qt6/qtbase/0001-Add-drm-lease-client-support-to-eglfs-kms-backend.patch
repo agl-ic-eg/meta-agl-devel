@@ -1,4 +1,4 @@
-From 85a85537b17742a839092bcc2a4684ab0bdb65d5 Mon Sep 17 00:00:00 2001
+From 7b0bff28e991bf9f8110a6e824c29044a7e09d39 Mon Sep 17 00:00:00 2001
 From: Naoto Yamaguchi <naoto.yamaguchi@aisin.co.jp>
 Date: Tue, 4 Jan 2022 23:52:31 +0900
 Subject: [PATCH] Add drm-lease client support to eglfs kms backend
@@ -160,22 +160,22 @@ index 0000000000..8dfac920ca
 +    DESCRIPTION "The DRM Lease Manager uses the DRM Lease feature, introduced in the Linux kernel version 4.15, to partition display controller output resources between multiple processes."
 +)
 diff --git a/src/gui/configure.cmake b/src/gui/configure.cmake
-index 0bf250eab6..b092b746c0 100644
+index 4affd7b30a..44ed626649 100644
 --- a/src/gui/configure.cmake
 +++ b/src/gui/configure.cmake
-@@ -38,6 +38,7 @@ endif()
+@@ -46,6 +46,7 @@ endif()
  qt_find_package(Fontconfig PROVIDED_TARGETS Fontconfig::Fontconfig MODULE_NAME gui QMAKE_LIB fontconfig)
  qt_add_qmake_lib_dependency(fontconfig freetype)
  qt_find_package(gbm PROVIDED_TARGETS gbm::gbm MODULE_NAME gui QMAKE_LIB gbm)
 +qt_find_package(Libdlmclient PROVIDED_TARGETS Libdlmclient::Libdlmclient MODULE_NAME gui QMAKE_LIB libdlmclient)
  qt_find_package(WrapSystemHarfbuzz 2.6.0 PROVIDED_TARGETS WrapSystemHarfbuzz::WrapSystemHarfbuzz MODULE_NAME gui QMAKE_LIB harfbuzz)
  qt_find_package(Libinput PROVIDED_TARGETS Libinput::Libinput MODULE_NAME gui QMAKE_LIB libinput)
- qt_find_package(JPEG PROVIDED_TARGETS JPEG::JPEG MODULE_NAME gui QMAKE_LIB libjpeg)
+ qt_find_package(WrapSystemJpeg PROVIDED_TARGETS WrapSystemJpeg::WrapSystemJpeg MODULE_NAME gui QMAKE_LIB libjpeg)
 diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/CMakeLists.txt b/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/CMakeLists.txt
-index a20a4a084d..2af7904eb6 100644
+index d575ae9d4f..7cf2d5dd78 100644
 --- a/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/CMakeLists.txt
 +++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/CMakeLists.txt
-@@ -23,6 +23,7 @@ qt_internal_add_module(EglFsKmsGbmSupportPrivate
+@@ -24,6 +24,7 @@ qt_internal_add_module(EglFsKmsGbmSupportPrivate
          Qt::GuiPrivate
          Qt::KmsSupportPrivate
          gbm::gbm
@@ -183,19 +183,17 @@ index a20a4a084d..2af7904eb6 100644
  )
  #####################################################################
  ## QEglFSKmsGbmIntegrationPlugin Plugin:
-@@ -44,6 +45,7 @@ qt_internal_add_plugin(QEglFSKmsGbmIntegrationPlugin
+@@ -45,4 +46,5 @@ qt_internal_add_plugin(QEglFSKmsGbmIntegrationPlugin
          Qt::GuiPrivate
          Qt::KmsSupportPrivate
          gbm::gbm
 +        Libdlmclient::Libdlmclient
  )
- 
- #### Keys ignored in scope 3:.:.:eglfs_kms-plugin.pro:<TRUE>:
 diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice.cpp b/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice.cpp
-index b5b7811b79..1e77c72ee5 100644
+index 89479fc250..2b4280ef12 100644
 --- a/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice.cpp
 +++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice.cpp
-@@ -56,32 +56,51 @@ Q_DECLARE_LOGGING_CATEGORY(qLcEglfsKmsDebug)
+@@ -20,32 +20,51 @@ Q_DECLARE_LOGGING_CATEGORY(qLcEglfsKmsDebug)
  QEglFSKmsGbmDevice::QEglFSKmsGbmDevice(QKmsScreenConfig *screenConfig, const QString &path)
      : QEglFSKmsDevice(screenConfig, path)
      , m_gbm_device(nullptr)
@@ -254,9 +252,9 @@ index b5b7811b79..1e77c72ee5 100644
 -    setFd(fd);
 +    setFd(drmfd);
  
-     m_eventReader.create(this);
- 
-@@ -99,7 +118,11 @@ void QEglFSKmsGbmDevice::close()
+     if (usesEventReader()) {
+         qCDebug(qLcEglfsKmsDebug, "Using dedicated drm event reading thread");
+@@ -70,7 +89,11 @@ void QEglFSKmsGbmDevice::close()
          m_gbm_device = nullptr;
      }
  
@@ -270,27 +268,27 @@ index b5b7811b79..1e77c72ee5 100644
          setFd(-1);
      }
 diff --git a/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice_p.h b/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice_p.h
-index bb67d800ee..b2d705800e 100644
+index e00992ed29..727555c5bd 100644
 --- a/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice_p.h
 +++ b/src/plugins/platforms/eglfs/deviceintegration/eglfs_kms/qeglfskmsgbmdevice_p.h
-@@ -57,6 +57,7 @@
- #include <private/qeglfskmsdevice_p.h>
+@@ -22,6 +22,7 @@
+ #include <private/qeglfskmseventreader_p.h>
  
  #include <gbm.h>
 +#include <dlmclient.h>
  
  QT_BEGIN_NAMESPACE
  
-@@ -92,6 +93,9 @@ private:
- 
+@@ -61,6 +62,9 @@ private:
      gbm_device *m_gbm_device;
- 
+     QEglFSKmsEventReader m_eventReader;
+     QEglFSKmsGbmCursor *m_globalCursor;
++
 +    // only used for DRM lease
 +    struct dlm_lease *m_lease;
-+
-     QEglFSKmsGbmCursor *m_globalCursor;
  };
  
+ QT_END_NAMESPACE
 -- 
 2.25.1
 

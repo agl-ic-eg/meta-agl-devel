@@ -2,7 +2,7 @@
 
 The meta-agl-drm-lease/dynamic-layers/meta-qt6 is a DRM lease support for Qt 6.x eglfs kms backend.
 
-This patch tested in Qt6.2.2 and Qt6.2.3.
+This patch tested in Qt6.7.
 
 ## Usage
 
