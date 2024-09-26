@@ -1,14 +1,18 @@
 ---
-description: Feature agl-lxc
-authors: Tadao Tanikawa <tanikawa.tadao@jp.panasonic.com>
+description: AGL Instrument Cluster Container Integration feature
+authors: Naoto Yamaguchi <naoto.yamaguchi@aisin.co.jp>
 ---
 
-### Feature agl-lxc
+### Feature agl-ic-container
 
-*Description is missing - please complete file meta-agl-devel/templates/feature/agl-lxc/README_feature_agl-lxc.md*
+This feature realize to AGL container integration.
+That support dual system on a linux kernel using linux container technology.
 
-### Dependent features pulled by agl-lxc
+
+### Dependent features pulled by agl-ic-container
 
 The following features are pulled:
 
-* agl-container
+* agl-drm-lease
+* agl-pipewire
+* agl-selinux
