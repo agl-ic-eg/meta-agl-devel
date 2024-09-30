@@ -1,0 +1,13 @@
+[Unit]
+Description=Pulse Audio Service
+After=basic.target
+Before=multi-user.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/pulseaudio --system --daemonize=no --disallow-exit --disallow-module-loading --log-target=journal
+MemoryDenyWriteExecute=yes
+Restart=on-failure
+
+[Install]
+WantedBy=basic.target
