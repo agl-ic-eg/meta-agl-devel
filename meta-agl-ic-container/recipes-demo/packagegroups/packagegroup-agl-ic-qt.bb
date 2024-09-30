@@ -13,11 +13,8 @@ PACKAGES = "\
 "
 RDEPENDS:${PN} += "\
     qtbase qtbase-plugins qtbase-qmlplugins \
-    qtdeclarative qtdeclarative-plugins qtdeclarative-qmlplugins \
-    qtgraphicaleffects qtgraphicaleffects-plugins qtgraphicaleffects-qmlplugins \
-    qtmultimedia qtmultimedia-plugins qtmultimedia-qmlplugins \
-    qtquickcontrols qtquickcontrols-plugins qtquickcontrols-qmlplugins \
-    qtquickcontrols2 qtquickcontrols2-plugins qtquickcontrols2-qmlplugins \
-    qtwayland qtwayland-plugins qtwayland-qmlplugins \
-    qt3d qt3d-plugins qt3d-qmlplugins \
+    qtdeclarative qtdeclarative-qmlplugins \
+    qt3d qt3d-plugins qt3d-qmlplugins\
+    qtquick3d qtquick3d \
+    qt5compat qt5compat-qmlplugins \
 "

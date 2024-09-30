@@ -5,12 +5,8 @@ require guest-image-minimal.bb
 
 IMAGE_INSTALL += " \
     packagegroup-agl-ic-core \
-    weston \
-    weston-init-guest \
-    weston-ini-conf-guest \
-    cluster-refgui \
     packagegroup-agl-ic-qt \
-    pipewire-ic-ipc \
+    cluster-refgui \
 "
 
 IMAGE_INSTALL:append:rpi = " mesa-megadriver"
