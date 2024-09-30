@@ -11,6 +11,7 @@ CONTAINER_IMAGES ?= "agl-container-cluster:guest-image-cluster-demo \
 IMAGE_INSTALL += " \
     kernel-modules \
     alsa-utils \
+    alsa-states \
 "
 
 # packages required for network bridge settings via lxc-net
