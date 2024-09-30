@@ -32,4 +32,5 @@ do_install:append() {
     install -D -m 0644 ${WORKDIR}/agl-app-flutter@flutter_voiceassistant.service ${D}${systemd_system_unitdir}/agl-app-flutter@flutter_voiceassistant.service
 }
 
+
 FILES:${PN} += "${datadir} "

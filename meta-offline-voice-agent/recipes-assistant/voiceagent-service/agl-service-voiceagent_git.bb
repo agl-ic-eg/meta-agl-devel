@@ -1,11 +1,12 @@
 SUMMARY = "A gRPC-based voice agent service designed for Automotive Grade Linux (AGL)."
-HOMEPAGE = "https://github.com/malik727/agl-service-voiceagent"
+.HOMEPAGE = "https://github.com/malik727/agl-service-voiceagent"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=4202492ed9afcab3aaecc4a9ec32adb2"
 
 SRC_URI = " \
-    file://agl-service-voiceagent.service \
     git://gerrit.automotivelinux.org/gerrit/apps/agl-service-voiceagent;protocol=https;branch=${AGL_BRANCH} \
+    file://agl-service-voiceagent.service \
+    file://voice-agent-config.ini \
 "
 
 SRCREV = "${AUTOREV}"
@@ -15,7 +16,7 @@ S = "${WORKDIR}/git"
 VOSK_STT_MODEL_NAME ?= "vosk-model-small-en-us-0.15" 
 # Wake Word Detection Model Name
 VOSK_WWD_MODEL_NAME ?= "vosk-model-small-en-us-0.15" 
-WAKE_WORD ?= "hello auto"
+WAKE_WORD ?= "hey automotive"
 
 DEPENDS += " \
     python3 \
@@ -53,8 +54,12 @@ do_install:append() {
     # Initialize our service definition
     if ${@bb.utils.contains('DISTRO_FEATURES', 'systemd', 'true', 'false', d)}; then
         install -d ${D}${systemd_system_unitdir}
-        install -m 0644 ${WORKDIR}/agl-service-voiceagent.service ${D}${systemd_system_unitdir}
+        install -m 0644 ${WORKDIR}/agl-service-voiceagent.service ${D}${systemd_system_unitdir}/agl-service-voiceagent.service
     fi
+
+    # Copy config file to etc/default
+    install -d ${D}/etc/default/
+    cp -R ${WORKDIR}/voice-agent-config.ini ${D}/etc/default/
 }
 
 RDEPENDS:${PN} += " \
@@ -65,7 +70,8 @@ RDEPENDS:${PN} += " \
     kuksa-client \
     python3-snips-inference-agl \
     vosk \
-    whisper \
+    whisper-cpp \
+    python3-python-mpd2 \
     "
 
-FILES:${PN} += "/usr/share/nlu/"
+FILES:${PN} += "/usr/share/nlu/ /etc/default/"

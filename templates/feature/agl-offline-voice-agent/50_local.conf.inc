@@ -21,17 +21,22 @@ FEATURE_PACKAGES_agl-offline-voice-agent:append = " \
     python3-sounddevice \
     flutter-voiceassistant \
     agl-service-voiceagent \
-    whisper \
-    openai-whisper-base \
+    whisper-cpp \
+    whisper-cpp-tiny \
     "
 
 EXTRA_IMAGE_FEATURES += "agl-offline-voice-agent"
 
 PREFERRED_RPROVIDER_vosk-model ?= "vosk-model-small-en-us"
-PREFERRED_RPROVIDER_whisper-model ?= "openai-whisper-base"
+PREFERRED_RPROVIDER_whisper-model ?= "whisper-cpp-tiny"
 
 # bump bazel limits
 BAZEL_JOBS = "HOST_CPUS*.4"
 BAZEL_MEM = "HOST_RAM*.4"
 
 LICENSE_FLAGS_ACCEPTED += "commercial_ffmpeg"
+
+# no rasa support currently
+#      python3-rasa \
+#      rasa-model-agl \
+#

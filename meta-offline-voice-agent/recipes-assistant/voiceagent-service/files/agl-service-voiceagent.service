@@ -3,7 +3,7 @@ Description=AGL Voice Agent Service
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/voiceagent-service run-server --default
+ExecStart=/usr/bin/voiceagent-service run-server --config /etc/default/voice-agent-config.ini
 Restart=always
 
 [Install]
