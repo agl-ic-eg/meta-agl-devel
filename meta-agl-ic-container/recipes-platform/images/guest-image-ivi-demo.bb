@@ -17,6 +17,7 @@ IMAGE_INSTALL += " \
     ttf-dejavu-mathtexgyre \
     ttf-dejavu-common \
     ca-certificates \
+    pre-install-video-data \
 "
 
 IMAGE_INSTALL:append:rpi = " mesa-megadriver"
