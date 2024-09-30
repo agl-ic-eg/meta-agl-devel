@@ -1,18 +1,13 @@
-SUMMARY = "LXC ivi demo guest image"
+SUMMARY = "Momi IVI demo guest image"
 LICENSE = "MIT"
 
 require guest-image-minimal.bb
 
 IMAGE_INSTALL += " \
-    weston \
-    weston-init-guest \
-    weston-ini-conf-guest \
-    wayland-ivi-extension \
-    ilm-manager \
+    packagegroup-agl-momi-ivi-qt \
+    momiscreen \
     mominavi \
     momiplay \
-    momiscreen \
-    packagegroup-agl-ic-qt \
     systemd-netif-config \
     ttf-dejavu-sans \
     ttf-dejavu-sans-mono \
@@ -22,9 +17,6 @@ IMAGE_INSTALL += " \
     ttf-dejavu-mathtexgyre \
     ttf-dejavu-common \
     ca-certificates \
-    wireplumber \
-    packagegroup-pipewire-base \
-    wireplumber-policy-config-agl \
 "
 
 IMAGE_INSTALL:append:rpi = " mesa-megadriver"
