@@ -1,29 +1,26 @@
-SUMMARY     = "Momiyama home screen example"
-DESCRIPTION = "The momiscreen is a home screen example. \
-               The momiscreen is not require agl-appfw."
+SUMMARY     = "Homescreen for AGL Momi IVI"
+DESCRIPTION = "Homescreen for AGL Momi IVI."
 LICENSE = "GPL-3.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=d32239bcb673463ab874e80d47fae504"
 
 DEPENDS = " \
+    qttools-native \
     qtbase \
-    qtquickcontrols2 \
-    qtgraphicaleffects \
-    qtsvg \
-    "
+    qtdeclarative \
+    qtwayland \
+"
 
-PV = "1.0.0"
+PV = "2.0.0"
 
 SRC_URI = "git://git.automotivelinux.org/apps/momiscreen;protocol=https;branch=${AGL_BRANCH} \
            file://momiscreen.service \
            file://momiscreen \
           "
-SRCREV = "22b44f911bf6c53298055626cef671a24e9e9069"
+SRCREV = "88fb60ad9d0c673f868d907ca451462ec16c9d7f"
 
 S = "${WORKDIR}/git"
 
-inherit qmake5 systemd
-
-QT_INSTALL_PREFIX = "/usr"
+inherit cmake qt6-cmake systemd pkgconfig
 
 do_install:append() {
 	install -d ${D}/${systemd_unitdir}/system
@@ -33,11 +30,11 @@ do_install:append() {
 	install -m 0755 ${WORKDIR}/momiscreen ${D}${sysconfdir}/default/
 }
 
-FILES:${PN} += " \
-    ${systemd_unitdir} \
-    ${sysconfdir}/*/* \
-    "
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE:${PN} = "momiscreen.service"
 
-RDEPENDS:${PN} = "qtsvg qtsvg-plugins qtsvg-qmlplugins"
+RDEPENDS:${PN} = " \
+    qtbase \
+    qtdeclarative \
+    qtwayland \
+"

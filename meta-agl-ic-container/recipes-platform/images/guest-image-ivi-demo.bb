@@ -5,6 +5,7 @@ require guest-image-minimal.bb
 
 IMAGE_INSTALL += " \
     packagegroup-agl-momi-ivi-qt \
+    qtwayland-setting \
     momiscreen \
     mominavi \
     momiplay \

@@ -1,30 +1,29 @@
 SUMMARY     = "Momiyama mediaplayer example based on AGL sample app. at CC"
 DESCRIPTION = "The momiplay is a mediaplayer example based on AGL sample app. \
                The momiplay is not require agl-appfw."
-LICENSE = "Apache-2.0"
-LIC_FILES_CHKSUM = "file://main.cpp;beginline=1;endline=17;md5=f4ad6901289f57f62d15bfefb5cc3633"
+LICENSE = "GPL-3.0-only"
+LIC_FILES_CHKSUM = "file://main.cpp;beginline=1;endline=17;md5=24274715d08cb2416c20d2907d19f413"
 
 DEPENDS = " \
+    qttools-native \
     qtbase \
-    qtquickcontrols2 \
-    qtgraphicaleffects \
+    qtdeclarative \
+    qtwayland \
     qtsvg \
     qtmultimedia \
     "
 
-PV = "1.0.0"
+PV = "2.0.0"
 
 SRC_URI = "git://git.automotivelinux.org/apps/momiplayer;protocol=https;branch=${AGL_BRANCH} \
            file://momiplay.service \
            file://momiplay \
           "
-SRCREV = "cb21f0fe4259c3b427ef7b2dd2c43fa73369ae42"
+SRCREV = "b4202d3d5aca7842314edbf010e2e8605a6a9e24"
 
 S = "${WORKDIR}/git"
 
-inherit qmake5 systemd
-
-QT_INSTALL_PREFIX = "/usr"
+inherit cmake qt6-cmake systemd pkgconfig
 
 do_install:append() {
 	install -d ${D}/${systemd_unitdir}/system
@@ -40,7 +39,6 @@ FILES:${PN} += " \
     "
 SYSTEMD_PACKAGES = "${PN}"
 SYSTEMD_SERVICE:${PN} = "momiplay.service"
-SYSTEMD_AUTO_ENABLE:${PN} = "disable"
 
 RDEPENDS:${PN} = " \
     qtsvg qtsvg-plugins qtsvg-qmlplugins \

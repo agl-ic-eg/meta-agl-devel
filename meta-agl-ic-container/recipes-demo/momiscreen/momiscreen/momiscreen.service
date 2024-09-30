@@ -1,12 +1,15 @@
 [Unit]
-Description=momiscreen
-After=multi-user.target weston.service
-Requires=multi-user.target weston.service
+Description=Homescreen for AGL Momi IVI
+After=multi-user.target
+Requires=multi-user.target
 
 [Service]
 Type=simple
 EnvironmentFile=/etc/default/momiscreen
+EnvironmentFile=-/etc/default/qtwayland-common
 ExecStart=/usr/bin/momiscreen
+Restart=on-failure
+StartLimitInterval=0
 
 [Install]
 WantedBy=multi-user.target
