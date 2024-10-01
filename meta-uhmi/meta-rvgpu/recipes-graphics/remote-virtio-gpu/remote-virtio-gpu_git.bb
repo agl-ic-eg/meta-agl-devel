@@ -11,7 +11,7 @@ SRC_URI:append = " \
 
 S = "${WORKDIR}/git"
 
-DEPENDS = "virglrenderer virtual/libgbm wayland wayland-native libepoxy libinput linux-libc-headers agl-compositor virtio-loopback-driver"
+DEPENDS = "virglrenderer virtual/libgbm wayland wayland-native libepoxy libinput virtio-loopback-driver"
 RDEPENDS:${PN} = " wayland libgles2"
 
 inherit cmake pkgconfig
