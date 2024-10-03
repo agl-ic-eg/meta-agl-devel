@@ -1,10 +1,11 @@
-// SPDX-License-Identifier: GPL-2.0+
+// SPDX-License-Identifier: GPL-2.0-only
 /*
  * CAN bus driver for the Virtio CAN controller
- * Copyright (C) 2021 OpenSynergy GmbH
+ * Copyright (C) 2021-2023 OpenSynergy GmbH
  */
 
 #include <linux/atomic.h>
+#include <linux/idr.h>
 #include <linux/interrupt.h>
 #include <linux/io.h>
 #include <linux/kernel.h>
@@ -23,11 +24,10 @@
 #endif
 
 /* CAN device queues */
-#define VIRTIO_CAN_QUEUE_TX 0u /* Driver side view! The device receives here */
-#define VIRTIO_CAN_QUEUE_RX 1u /* Driver side view! The device transmits here */
-#define VIRTIO_CAN_QUEUE_CONTROL 2u
-#define VIRTIO_CAN_QUEUE_INDICATION 3u
-#define VIRTIO_CAN_QUEUE_COUNT 4u
+#define VIRTIO_CAN_QUEUE_TX 0 /* Driver side view! The device receives here */
+#define VIRTIO_CAN_QUEUE_RX 1 /* Driver side view! The device transmits here */
+#define VIRTIO_CAN_QUEUE_CONTROL 2
+#define VIRTIO_CAN_QUEUE_COUNT 3
 
 #define CAN_KNOWN_FLAGS \
 	(VIRTIO_CAN_FLAGS_EXTENDED |\
@@ -35,17 +35,16 @@
 	 VIRTIO_CAN_FLAGS_RTR)
 
 /* napi related */
-#define VIRTIO_CAN_NAPI_WEIGHT	NAPI_POLL_WEIGHT
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(6, 1, 0)
+#define VIRTIO_CAN_NAPI_WEIGHT  NAPI_POLL_WEIGHT
+#endif
 
-/* CAN TX message priorities (0 = normal priority) */
-#define VIRTIO_CAN_PRIO_COUNT 1
-/* Max. nummber of in flight TX messages */
-#define VIRTIO_CAN_ECHO_SKB_MAX 128u
+/* Max. number of in flight TX messages */
+#define VIRTIO_CAN_ECHO_SKB_MAX 128
 
 struct virtio_can_tx {
 	struct list_head list;
-	int prio; /* Currently always 0 "normal priority" */
-	int putidx;
+	unsigned int putidx;
 	struct virtio_can_tx_out tx_out;
 	struct virtio_can_tx_in tx_in;
 };
@@ -74,19 +73,14 @@ struct virtio_can_priv {
 	/* List of virtio CAN TX message */
 	struct list_head tx_list;
 	/* Array of receive queue messages */
-	struct virtio_can_rx rpkt[128u];
+	struct virtio_can_rx rpkt[128];
 	/* Those control queue messages cannot live on the stack! */
 	struct virtio_can_control_out cpkt_out;
 	struct virtio_can_control_in cpkt_in;
-	/* Indication queue message */
-	struct virtio_can_event_ind ipkt[1u];
 	/* Data to get and maintain the putidx for local TX echo */
-	struct list_head tx_putidx_free;
-	struct list_head *tx_putidx_list;
-	/* In flight TX messages per prio */
-	atomic_t tx_inflight[VIRTIO_CAN_PRIO_COUNT];
-	/* Max. In flight TX messages per prio */
-	u16 tx_limit[VIRTIO_CAN_PRIO_COUNT];
+	struct ida tx_putidx_ida;
+	/* In flight TX messages */
+	atomic_t tx_inflight;
 	/* BusOff pending. Reset after successful indication to upper layer */
 	bool busoff_pending;
 };
@@ -120,36 +114,27 @@ static void virtio_can_free_candev(struct net_device *ndev)
 {
 	struct virtio_can_priv *priv = netdev_priv(ndev);
 
-	kfree(priv->tx_putidx_list);
+	ida_destroy(&priv->tx_putidx_ida);
 	free_candev(ndev);
 }
 
-static int virtio_can_alloc_tx_idx(struct virtio_can_priv *priv, int prio)
+static int virtio_can_alloc_tx_idx(struct virtio_can_priv *priv)
 {
-	struct list_head *entry;
+	int tx_idx;
 
-	BUG_ON(prio != 0); /* Currently only 1 priority */
-	BUG_ON(atomic_read(&priv->tx_inflight[0]) >= priv->can.echo_skb_max);
-	atomic_add(1, &priv->tx_inflight[prio]);
+	tx_idx = ida_alloc_range(&priv->tx_putidx_ida, 0,
+				 priv->can.echo_skb_max - 1, GFP_KERNEL);
+	if (tx_idx >= 0)
+		atomic_add(1, &priv->tx_inflight);
 
-	if (list_empty(&priv->tx_putidx_free))
-		return -1; /* Not expected to happen */
-
-	entry = priv->tx_putidx_free.next;
-	list_del(entry);
-
-	return entry - priv->tx_putidx_list;
+	return tx_idx;
 }
 
-static void virtio_can_free_tx_idx(struct virtio_can_priv *priv, int prio,
-				   int idx)
+static void virtio_can_free_tx_idx(struct virtio_can_priv *priv,
+				   unsigned int idx)
 {
-	BUG_ON(prio >= VIRTIO_CAN_PRIO_COUNT);
-	BUG_ON(idx >= priv->can.echo_skb_max);
-	BUG_ON(atomic_read(&priv->tx_inflight[prio]) == 0);
-
-	list_add(&priv->tx_putidx_list[idx], &priv->tx_putidx_free);
-	atomic_sub(1, &priv->tx_inflight[prio]);
+	ida_free(&priv->tx_putidx_ida, idx);
+	atomic_sub(1, &priv->tx_inflight);
 }
 
 /* Create a scatter-gather list representing our input buffer and put
@@ -185,14 +170,14 @@ static int virtio_can_add_inbuf(struct virtqueue *vq, void *buf,
  */
 static u8 virtio_can_send_ctrl_msg(struct net_device *ndev, u16 msg_type)
 {
+	struct scatterlist sg_out, sg_in, *sgs[2] = { &sg_out, &sg_in };
 	struct virtio_can_priv *priv = netdev_priv(ndev);
 	struct device *dev = &priv->vdev->dev;
-	struct virtqueue *vq = priv->vqs[VIRTIO_CAN_QUEUE_CONTROL];
-	struct scatterlist sg_out[1u];
-	struct scatterlist sg_in[1u];
-	struct scatterlist *sgs[2u];
-	int err;
+	struct virtqueue *vq;
 	unsigned int len;
+	int err;
+
+	vq = priv->vqs[VIRTIO_CAN_QUEUE_CONTROL];
 
 	/* The function may be serialized by rtnl lock. Not sure.
 	 * Better safe than sorry.
@@ -200,10 +185,8 @@ static u8 virtio_can_send_ctrl_msg(struct net_device *ndev, u16 msg_type)
 	mutex_lock(&priv->ctrl_lock);
 
 	priv->cpkt_out.msg_type = cpu_to_le16(msg_type);
-	sg_init_one(&sg_out[0], &priv->cpkt_out, sizeof(priv->cpkt_out));
-	sg_init_one(&sg_in[0], &priv->cpkt_in, sizeof(priv->cpkt_in));
-	sgs[0] = sg_out;
-	sgs[1] = sg_in;
+	sg_init_one(&sg_out, &priv->cpkt_out, sizeof(priv->cpkt_out));
+	sg_init_one(&sg_in, &priv->cpkt_in, sizeof(priv->cpkt_in));
 
 	err = virtqueue_add_sgs(vq, sgs, 1u, 1u, priv, GFP_ATOMIC);
 	if (err != 0) {
@@ -250,7 +233,7 @@ static void virtio_can_start(struct net_device *ndev)
  * That CAN_MODE_SLEEP is frequently not found to be supported anywhere did not
  * come not as surprise but that CAN_MODE_STOP is also never supported was one.
  * The function is accessible via the method pointer do_set_mode in
- * struct can_priv. As ususal no documentation there.
+ * struct can_priv. As usual no documentation there.
  * May not play any role as grepping through the code did not reveal any place
  * from where the method is actually called.
  */
@@ -313,123 +296,118 @@ static int virtio_can_close(struct net_device *dev)
 static netdev_tx_t virtio_can_start_xmit(struct sk_buff *skb,
 					 struct net_device *dev)
 {
-	struct virtio_can_priv *priv = netdev_priv(dev);
-	struct canfd_frame *cf = (struct canfd_frame *)skb->data;
-	struct virtio_can_tx *can_tx_msg;
-	struct virtqueue *vq = priv->vqs[VIRTIO_CAN_QUEUE_TX];
-	struct scatterlist sg_out[1u];
-	struct scatterlist sg_in[1u];
-	struct scatterlist *sgs[2u];
-	unsigned long flags;
-	size_t len;
-	u32 can_flags;
-	int err;
-	int prio = 0; /* Priority is always 0 "normal priority" */
-	netdev_tx_t xmit_ret = NETDEV_TX_OK;
 	const unsigned int hdr_size = offsetof(struct virtio_can_tx_out, sdu);
+	struct scatterlist sg_out, sg_in, *sgs[2] = { &sg_out, &sg_in };
+	struct canfd_frame *cf = (struct canfd_frame *)skb->data;
+	struct virtio_can_priv *priv = netdev_priv(dev);
+	netdev_tx_t xmit_ret = NETDEV_TX_OK;
+	struct virtio_can_tx *can_tx_msg;
+	struct virtqueue *vq;
+	unsigned long flags;
+	u32 can_flags;
+	int putidx;
+	int err;
 
+	vq = priv->vqs[VIRTIO_CAN_QUEUE_TX];
+
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(6, 0, 9)
 	if (can_dropped_invalid_skb(dev, skb))
+#else
+	if (can_dev_dropped_skb(dev, skb))
+#endif
 		goto kick; /* No way to return NET_XMIT_DROP here */
-
-	/* Virtio CAN does not support error message frames */
-	if (cf->can_id & CAN_ERR_FLAG) {
-		kfree_skb(skb);
-		dev->stats.tx_dropped++;
-		goto kick; /* No way to return NET_XMIT_DROP here */
-	}
 
 	/* No local check for CAN_RTR_FLAG or FD frame against negotiated
 	 * features. The device will reject those anyway if not supported.
 	 */
 
 	can_tx_msg = kzalloc(sizeof(*can_tx_msg), GFP_ATOMIC);
-	if (!can_tx_msg)
+	if (!can_tx_msg) {
+		dev->stats.tx_dropped++;
 		goto kick; /* No way to return NET_XMIT_DROP here */
+	}
 
 	can_tx_msg->tx_out.msg_type = cpu_to_le16(VIRTIO_CAN_TX);
-	can_flags = 0u;
-	if (cf->can_id & CAN_EFF_FLAG)
+	can_flags = 0;
+
+	if (cf->can_id & CAN_EFF_FLAG) {
 		can_flags |= VIRTIO_CAN_FLAGS_EXTENDED;
+		can_tx_msg->tx_out.can_id = cpu_to_le32(cf->can_id & CAN_EFF_MASK);
+	} else {
+		can_tx_msg->tx_out.can_id = cpu_to_le32(cf->can_id & CAN_SFF_MASK);
+	}
 	if (cf->can_id & CAN_RTR_FLAG)
 		can_flags |= VIRTIO_CAN_FLAGS_RTR;
+	else
+		memcpy(can_tx_msg->tx_out.sdu, cf->data, cf->len);
 	if (can_is_canfd_skb(skb))
 		can_flags |= VIRTIO_CAN_FLAGS_FD;
+
 	can_tx_msg->tx_out.flags = cpu_to_le32(can_flags);
-	can_tx_msg->tx_out.can_id = cpu_to_le32(cf->can_id & CAN_EFF_MASK);
-	len = cf->len;
-	if (len > sizeof(cf->data))
-		len = sizeof(cf->data);
-	if (len > sizeof(can_tx_msg->tx_out.sdu))
-		len = sizeof(can_tx_msg->tx_out.sdu);
-	if (!(can_flags & VIRTIO_CAN_FLAGS_RTR)) {
-		/* Copy if no RTR frame. RTR frames have a DLC but no payload */
-		memcpy(can_tx_msg->tx_out.sdu, cf->data, len);
-	}
+	can_tx_msg->tx_out.length = cpu_to_le16(cf->len);
 
 	/* Prepare sending of virtio message */
-	sg_init_one(&sg_out[0], &can_tx_msg->tx_out, hdr_size + len);
-	sg_init_one(&sg_in[0], &can_tx_msg->tx_in, sizeof(can_tx_msg->tx_in));
-	sgs[0] = sg_out;
-	sgs[1] = sg_in;
+	sg_init_one(&sg_out, &can_tx_msg->tx_out, hdr_size + cf->len);
+	sg_init_one(&sg_in, &can_tx_msg->tx_in, sizeof(can_tx_msg->tx_in));
 
-	/* Find free TX priority */
-	if (atomic_read(&priv->tx_inflight[prio]) >= priv->tx_limit[prio]) {
-		/* May happen if
-		 * - tx_limit[prio] > max # of TX queue messages
+	putidx = virtio_can_alloc_tx_idx(priv);
+
+	if (unlikely(putidx < 0)) {
+		/* -ENOMEM or -ENOSPC here. -ENOSPC should not be possible as
+		 * tx_inflight >= can.echo_skb_max is checked in flow control
 		 */
-		netif_stop_queue(dev);
+		WARN_ON_ONCE(putidx == -ENOSPC);
 		kfree(can_tx_msg);
-		netdev_dbg(dev, "TX: Stop queue, all prios full\n");
-		xmit_ret = NETDEV_TX_BUSY;
-		goto kick;
+		dev->stats.tx_dropped++;
+		goto kick; /* No way to return NET_XMIT_DROP here */
 	}
 
-	/* Normal queue stop when no transmission slots are left */
-	if (atomic_read(&priv->tx_inflight[prio]) >= priv->tx_limit[prio]) {
-		netif_stop_queue(dev);
-		netdev_dbg(dev, "TX: Normal stop queue\n");
-	}
+	can_tx_msg->putidx = (unsigned int)putidx;
 
-	/* Protect list operations */
+	/* Protect list operation */
 	spin_lock_irqsave(&priv->tx_lock, flags);
-	can_tx_msg->putidx = virtio_can_alloc_tx_idx(priv, prio);
 	list_add_tail(&can_tx_msg->list, &priv->tx_list);
 	spin_unlock_irqrestore(&priv->tx_lock, flags);
 
-	BUG_ON(can_tx_msg->putidx < 0);
-	can_tx_msg->prio = prio;
-
 	/* Push loopback echo. Will be looped back on TX interrupt/TX NAPI */
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
-	can_put_echo_skb(skb, dev, can_tx_msg->putidx, 0);
-#else
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(5, 12, 0)
 	can_put_echo_skb(skb, dev, can_tx_msg->putidx);
+#else
+	can_put_echo_skb(skb, dev, can_tx_msg->putidx, 0);
 #endif
 
 	/* Protect queue and list operations */
 	spin_lock_irqsave(&priv->tx_lock, flags);
 	err = virtqueue_add_sgs(vq, sgs, 1u, 1u, can_tx_msg, GFP_ATOMIC);
-	if (err != 0) {
+	if (unlikely(err)) { /* checking vq->num_free in flow control */
 		list_del(&can_tx_msg->list);
-		virtio_can_free_tx_idx(priv, can_tx_msg->prio,
-				       can_tx_msg->putidx);
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(5, 13, 0)
+		can_free_echo_skb(dev, can_tx_msg->putidx);
+#else
+		can_free_echo_skb(dev, can_tx_msg->putidx, NULL);
+#endif
+		virtio_can_free_tx_idx(priv, can_tx_msg->putidx);
 		spin_unlock_irqrestore(&priv->tx_lock, flags);
 		netif_stop_queue(dev);
 		kfree(can_tx_msg);
-		if (err == -ENOSPC)
-			netdev_dbg(dev, "TX: Stop queue, no space left\n");
-		else
-			netdev_warn(dev, "TX: Stop queue, reason = %d\n", err);
+		/* Expected never to be seen */
+		netdev_warn(dev, "TX: Stop queue, err = %d\n", err);
 		xmit_ret = NETDEV_TX_BUSY;
 		goto kick;
 	}
+
+	/* Normal flow control: stop queue when no transmission slots left */
+	if (atomic_read(&priv->tx_inflight) >= priv->can.echo_skb_max ||
+	    vq->num_free == 0 || (vq->num_free < ARRAY_SIZE(sgs) &&
+	    !virtio_has_feature(vq->vdev, VIRTIO_RING_F_INDIRECT_DESC))) {
+		netif_stop_queue(dev);
+		netdev_dbg(dev, "TX: Normal stop queue\n");
+	}
+
 	spin_unlock_irqrestore(&priv->tx_lock, flags);
 
 kick:
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 2, 0)
-	if (netif_queue_stopped(dev) || !netdev_xmit_more())
-#endif
-	{
+	if (netif_queue_stopped(dev) || !netdev_xmit_more()) {
 		if (!virtqueue_kick(vq))
 			netdev_err(dev, "%s(): Kick failed\n", __func__);
 	}
@@ -457,11 +435,13 @@ static int virtio_can_read_tx_queue(struct virtqueue *vq)
 {
 	struct virtio_can_priv *can_priv = vq->vdev->priv;
 	struct net_device *dev = can_priv->dev;
-	struct net_device_stats *stats = &dev->stats;
 	struct virtio_can_tx *can_tx_msg;
+	struct net_device_stats *stats;
 	unsigned long flags;
 	unsigned int len;
 	u8 result;
+
+	stats = &dev->stats;
 
 	/* Protect list and virtio queue operations */
 	spin_lock_irqsave(&can_priv->tx_lock, flags);
@@ -488,27 +468,24 @@ static int virtio_can_read_tx_queue(struct virtqueue *vq)
 		if (result != VIRTIO_CAN_RESULT_OK)
 			netdev_warn(dev, "TX ACK: Result = %u\n", result);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0)
-		stats->tx_bytes += can_get_echo_skb(dev, can_tx_msg->putidx, NULL);
-#else
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(5, 12, 0)
 		stats->tx_bytes += can_get_echo_skb(dev, can_tx_msg->putidx);
+#else
+		stats->tx_bytes += can_get_echo_skb(dev, can_tx_msg->putidx,
+						    NULL);
 #endif
 		stats->tx_packets++;
 	} else {
 		netdev_dbg(dev, "TX ACK: Controller inactive, drop echo\n");
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 13, 0)
-		can_free_echo_skb(dev, can_tx_msg->putidx, NULL);
-#else
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(5, 13, 0)
 		can_free_echo_skb(dev, can_tx_msg->putidx);
+#else
+		can_free_echo_skb(dev, can_tx_msg->putidx, NULL);
 #endif
 	}
 
 	list_del(&can_tx_msg->list);
-	virtio_can_free_tx_idx(can_priv, can_tx_msg->prio, can_tx_msg->putidx);
-
-	spin_unlock_irqrestore(&can_priv->tx_lock, flags);
-
-	kfree(can_tx_msg);
+	virtio_can_free_tx_idx(can_priv, can_tx_msg->putidx);
 
 	/* Flow control */
 	if (netif_queue_stopped(dev)) {
@@ -516,7 +493,11 @@ static int virtio_can_read_tx_queue(struct virtqueue *vq)
 		netif_wake_queue(dev);
 	}
 
-	return 1; /* Queue was not emtpy so there may be more data */
+	spin_unlock_irqrestore(&can_priv->tx_lock, flags);
+
+	kfree(can_tx_msg);
+
+	return 1; /* Queue was not empty so there may be more data */
 }
 
 /* Poll TX used queue for sent CAN messages
@@ -526,9 +507,12 @@ static int virtio_can_read_tx_queue(struct virtqueue *vq)
 static int virtio_can_tx_poll(struct napi_struct *napi, int quota)
 {
 	struct net_device *dev = napi->dev;
-	struct virtio_can_priv *priv = netdev_priv(dev);
-	struct virtqueue *vq = priv->vqs[VIRTIO_CAN_QUEUE_TX];
+	struct virtio_can_priv *priv;
+	struct virtqueue *vq;
 	int work_done = 0;
+
+	priv = netdev_priv(dev);
+	vq = priv->vqs[VIRTIO_CAN_QUEUE_TX];
 
 	while (work_done < quota && virtio_can_read_tx_queue(vq) != 0)
 		work_done++;
@@ -548,29 +532,33 @@ static void virtio_can_tx_intr(struct virtqueue *vq)
 }
 
 /* This function is the NAPI RX poll function and NAPI guarantees that this
- * function is not invoked simulataneously on multiply processors.
+ * function is not invoked simultaneously on multiple processors.
  * Read a RX message from the used queue and sends it to the upper layer.
  * (See also m_can.c / m_can_read_fifo()).
  */
 static int virtio_can_read_rx_queue(struct virtqueue *vq)
 {
+	const unsigned int header_size = offsetof(struct virtio_can_rx, sdu);
 	struct virtio_can_priv *priv = vq->vdev->priv;
 	struct net_device *dev = priv->dev;
-	struct net_device_stats *stats = &dev->stats;
+	struct net_device_stats *stats;
 	struct virtio_can_rx *can_rx;
+	unsigned int transport_len;
 	struct canfd_frame *cf;
 	struct sk_buff *skb;
 	unsigned int len;
-	const unsigned int header_size = offsetof(struct virtio_can_rx, sdu);
-	u16 msg_type;
 	u32 can_flags;
+	u16 msg_type;
 	u32 can_id;
 
-	can_rx = virtqueue_get_buf(vq, &len);
-	if (!can_rx)
-		return 0; /* No more data */
+	stats = &dev->stats;
 
-	if (len < header_size) {
+	can_rx = virtqueue_get_buf(vq, &transport_len);
+	if (!can_rx) {
+		return 0; /* No more data */
+	}
+
+	if (transport_len < header_size) {
 		netdev_warn(dev, "RX: Message too small\n");
 		goto putback;
 	}
@@ -586,7 +574,7 @@ static int virtio_can_read_rx_queue(struct virtqueue *vq)
 		goto putback;
 	}
 
-	len -= header_size; /* Payload only now */
+	len = le16_to_cpu(can_rx->length);
 	can_flags = le32_to_cpu(can_rx->flags);
 	can_id = le32_to_cpu(can_rx->can_id);
 
@@ -618,14 +606,9 @@ static int virtio_can_read_rx_queue(struct virtqueue *vq)
 			goto putback;
 		}
 
-		/* For RTR frames we have determined a len value here from a
-		 * payload length while RTR frames have no payload. Could be
-		 * reason enough to add a dlc field to virtio CAN RX and virtio
-		 * CAN TX messages avoiding to have a dummy payload here.
-		 */
 		if (len > 0xF) {
 			stats->rx_dropped++;
-			netdev_warn(dev, "RX: CAN Id 0x%08x: RTR with len != 0\n",
+			netdev_warn(dev, "RX: CAN Id 0x%08x: RTR with DLC > 0xF\n",
 				    can_id);
 			goto putback;
 		}
@@ -634,6 +617,11 @@ static int virtio_can_read_rx_queue(struct virtqueue *vq)
 			len = 0x8;
 
 		can_id |= CAN_RTR_FLAG;
+	}
+
+	if (transport_len < header_size + len) {
+		netdev_warn(dev, "RX: Message too small for payload\n");
+		goto putback;
 	}
 
 	if (can_flags & VIRTIO_CAN_FLAGS_FD) {
@@ -661,6 +649,7 @@ static int virtio_can_read_rx_queue(struct virtqueue *vq)
 
 		skb = alloc_can_skb(priv->dev, (struct can_frame **)&cf);
 	}
+
 	if (!skb) {
 		stats->rx_dropped++;
 		netdev_warn(dev, "RX: No skb available\n");
@@ -684,17 +673,15 @@ putback:
 	/* Put processed RX buffer back into avail queue */
 	virtio_can_add_inbuf(vq, can_rx, sizeof(struct virtio_can_rx));
 
-	return 1; /* Queue was not emtpy so there may be more data */
+	return 1; /* Queue was not empty so there may be more data */
 }
 
 /* See m_can_poll() / m_can_handle_state_errors() m_can_handle_state_change() */
 static int virtio_can_handle_busoff(struct net_device *dev)
 {
 	struct virtio_can_priv *priv = netdev_priv(dev);
-	struct net_device_stats *stats = &dev->stats;
 	struct can_frame *cf;
 	struct sk_buff *skb;
-	u8 rx_bytes;
 
 	if (!priv->busoff_pending)
 		return 0;
@@ -715,14 +702,10 @@ static int virtio_can_handle_busoff(struct net_device *dev)
 
 	/* bus-off state */
 	cf->can_id |= CAN_ERR_BUSOFF;
-	rx_bytes = cf->can_dlc;
 
 	/* Ensure that the BusOff indication does not get lost */
 	if (netif_receive_skb(skb) == NET_RX_SUCCESS)
 		priv->busoff_pending = false;
-
-	stats->rx_packets++;
-	stats->rx_bytes += rx_bytes;
 
 	return 1;
 }
@@ -736,9 +719,12 @@ static int virtio_can_handle_busoff(struct net_device *dev)
 static int virtio_can_rx_poll(struct napi_struct *napi, int quota)
 {
 	struct net_device *dev = napi->dev;
-	struct virtio_can_priv *priv = netdev_priv(dev);
-	struct virtqueue *vq = priv->vqs[VIRTIO_CAN_QUEUE_RX];
+	struct virtio_can_priv *priv;
+	struct virtqueue *vq;
 	int work_done = 0;
+
+	priv = netdev_priv(dev);
+	vq = priv->vqs[VIRTIO_CAN_QUEUE_RX];
 
 	work_done += virtio_can_handle_busoff(dev);
 
@@ -766,44 +752,21 @@ static void virtio_can_control_intr(struct virtqueue *vq)
 	complete(&can_priv->ctrl_done);
 }
 
-static void virtio_can_evind_intr(struct virtqueue *vq)
+static void virtio_can_config_changed(struct virtio_device *vdev)
 {
-	struct virtio_can_priv *can_priv = vq->vdev->priv;
-	struct net_device *dev = can_priv->dev;
-	struct virtio_can_event_ind *evind;
-	unsigned int len;
-	u16 msg_type;
+	struct virtio_can_priv *can_priv = vdev->priv;
+	u16 status;
 
-	for (;;) {
-		/* The interrupt function is not assumed to be interrupted by
-		 * itself so locks should not be needed for queue operations.
-		 */
-		evind = virtqueue_get_buf(vq, &len);
-		if (!evind)
-			return; /* No more messages */
+	status = virtio_cread16(vdev, offsetof(struct virtio_can_config,
+					       status));
 
-		if (len < sizeof(struct virtio_can_event_ind)) {
-			netdev_warn(dev, "Evind: Message too small\n");
-			goto putback;
-		}
+	if (!(status & VIRTIO_CAN_S_CTRL_BUSOFF))
+		return;
 
-		msg_type = le16_to_cpu(evind->msg_type);
-		if (msg_type != VIRTIO_CAN_BUSOFF_IND) {
-			netdev_warn(dev, "Evind: Got unknown msg_type %04x\n",
-				    msg_type);
-			goto putback;
-		}
-
-		if (!can_priv->busoff_pending &&
-		    can_priv->can.state < CAN_STATE_BUS_OFF) {
-			can_priv->busoff_pending = true;
-			napi_schedule(&can_priv->napi);
-		}
-
-putback:
-		/* Put processed event ind buffer back into avail queue */
-		virtio_can_add_inbuf(vq, evind,
-				     sizeof(struct virtio_can_event_ind));
+	if (!can_priv->busoff_pending &&
+	    can_priv->can.state < CAN_STATE_BUS_OFF) {
+		can_priv->busoff_pending = true;
+		napi_schedule(&can_priv->napi);
 	}
 }
 
@@ -815,11 +778,9 @@ static void virtio_can_populate_vqs(struct virtio_device *vdev)
 	unsigned int idx;
 	int ret;
 
-	// TODO: Think again a moment if here locks already may be needed!
-
 	/* Fill RX queue */
 	vq = priv->vqs[VIRTIO_CAN_QUEUE_RX];
-	for (idx = 0u; idx < ARRAY_SIZE(priv->rpkt); idx++) {
+	for (idx = 0; idx < ARRAY_SIZE(priv->rpkt); idx++) {
 		ret = virtio_can_add_inbuf(vq, &priv->rpkt[idx],
 					   sizeof(struct virtio_can_rx));
 		if (ret < 0) {
@@ -829,19 +790,6 @@ static void virtio_can_populate_vqs(struct virtio_device *vdev)
 		}
 	}
 	dev_dbg(&vdev->dev, "%u rpkt added\n", idx);
-
-	/* Fill event indication queue */
-	vq = priv->vqs[VIRTIO_CAN_QUEUE_INDICATION];
-	for (idx = 0u; idx < ARRAY_SIZE(priv->ipkt); idx++) {
-		ret = virtio_can_add_inbuf(vq, &priv->ipkt[idx],
-					   sizeof(struct virtio_can_event_ind));
-		if (ret < 0) {
-			dev_dbg(&vdev->dev, "ipkt fill: ret=%d, idx=%u\n",
-				ret, idx);
-			break;
-		}
-	}
-	dev_dbg(&vdev->dev, "%u ipkt added\n", idx);
 }
 
 static int virtio_can_find_vqs(struct virtio_can_priv *priv)
@@ -852,14 +800,12 @@ static int virtio_can_find_vqs(struct virtio_can_priv *priv)
 	static const char * const io_names[VIRTIO_CAN_QUEUE_COUNT] = {
 		"can-tx",
 		"can-rx",
-		"can-state-ctrl",
-		"can-event-ind"
+		"can-state-ctrl"
 	};
 
 	priv->io_callbacks[VIRTIO_CAN_QUEUE_TX] = virtio_can_tx_intr;
 	priv->io_callbacks[VIRTIO_CAN_QUEUE_RX] = virtio_can_rx_intr;
 	priv->io_callbacks[VIRTIO_CAN_QUEUE_CONTROL] = virtio_can_control_intr;
-	priv->io_callbacks[VIRTIO_CAN_QUEUE_INDICATION] = virtio_can_evind_intr;
 
 	/* Find the queues. */
 	return virtio_find_vqs(priv->vdev, VIRTIO_CAN_QUEUE_COUNT, priv->vqs,
@@ -880,10 +826,6 @@ static void virtio_can_del_vq(struct virtio_device *vdev)
 	/* From here we have dead silence from the device side so no locks
 	 * are needed to protect against device side events.
 	 */
-
-	vq = priv->vqs[VIRTIO_CAN_QUEUE_INDICATION];
-	while (virtqueue_detach_unused_buf(vq))
-		; /* Do nothing, content allocated statically */
 
 	vq = priv->vqs[VIRTIO_CAN_QUEUE_CONTROL];
 	while (virtqueue_detach_unused_buf(vq))
@@ -950,36 +892,28 @@ static int virtio_can_validate(struct virtio_device *vdev)
 
 static int virtio_can_probe(struct virtio_device *vdev)
 {
-	struct net_device *dev;
 	struct virtio_can_priv *priv;
+	struct net_device *dev;
 	int err;
-	unsigned int echo_skb_max;
-	unsigned int idx;
-	u16 lo_tx = VIRTIO_CAN_ECHO_SKB_MAX;
 
-	echo_skb_max = lo_tx;
-	dev = alloc_candev(sizeof(struct virtio_can_priv), echo_skb_max);
+	dev = alloc_candev(sizeof(struct virtio_can_priv),
+			   VIRTIO_CAN_ECHO_SKB_MAX);
 	if (!dev)
 		return -ENOMEM;
 
 	priv = netdev_priv(dev);
 
-	priv->tx_putidx_list =
-		kcalloc(echo_skb_max, sizeof(struct list_head), GFP_KERNEL);
-	if (!priv->tx_putidx_list) {
-		free_candev(dev);
-		return -ENOMEM;
-	}
+	ida_init(&priv->tx_putidx_ida);
 
-	INIT_LIST_HEAD(&priv->tx_putidx_free);
-	for (idx = 0u; idx < echo_skb_max; idx++)
-		list_add_tail(&priv->tx_putidx_list[idx],
-			      &priv->tx_putidx_free);
-
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(6, 1, 0)
 	netif_napi_add(dev, &priv->napi, virtio_can_rx_poll,
-		       VIRTIO_CAN_NAPI_WEIGHT);
+					   VIRTIO_CAN_NAPI_WEIGHT);
 	netif_napi_add(dev, &priv->napi_tx, virtio_can_tx_poll,
-		       VIRTIO_CAN_NAPI_WEIGHT);
+					   VIRTIO_CAN_NAPI_WEIGHT);
+#else
+	netif_napi_add(dev, &priv->napi, virtio_can_rx_poll);
+	netif_napi_add(dev, &priv->napi_tx, virtio_can_tx_poll);
+#endif
 
 	SET_NETDEV_DEV(dev, &vdev->dev);
 
@@ -988,16 +922,15 @@ static int virtio_can_probe(struct virtio_device *vdev)
 	vdev->priv = priv;
 
 	priv->can.do_set_mode = virtio_can_set_mode;
-	priv->can.state = CAN_STATE_STOPPED;
 	/* Set Virtio CAN supported operations */
 	priv->can.ctrlmode_supported = CAN_CTRLMODE_BERR_REPORTING;
 	if (virtio_has_feature(vdev, VIRTIO_CAN_F_CAN_FD)) {
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0)
+#if LINUX_VERSION_CODE <  KERNEL_VERSION(5, 17, 0)
+		can_set_static_ctrlmode(dev, CAN_CTRLMODE_FD);
+#else
 		err = can_set_static_ctrlmode(dev, CAN_CTRLMODE_FD);
 		if (err != 0)
 			goto on_failure;
-#else
-		can_set_static_ctrlmode(dev, CAN_CTRLMODE_FD);
 #endif
 	}
 
@@ -1005,22 +938,6 @@ static int virtio_can_probe(struct virtio_device *vdev)
 	err = virtio_can_find_vqs(priv);
 	if (err != 0)
 		goto on_failure;
-
-	/* It is possible to consider the number of TX queue places to
-	 * introduce a stricter TX flow control. Question is if this should
-	 * be done permanently this way in the Linux virtio CAN driver.
-	 */
-	if (true) {
-		struct virtqueue *vq = priv->vqs[VIRTIO_CAN_QUEUE_TX];
-		unsigned int tx_slots = vq->num_free;
-
-		if (!virtio_has_feature(vdev, VIRTIO_RING_F_INDIRECT_DESC))
-			tx_slots >>= 1;
-		if (lo_tx > tx_slots)
-			lo_tx = tx_slots;
-	}
-
-	priv->tx_limit[0] = lo_tx;
 
 	INIT_LIST_HEAD(&priv->tx_list);
 
@@ -1046,11 +963,10 @@ on_failure:
 	return err;
 }
 
-#ifdef CONFIG_PM_SLEEP
 /* Compare with m_can.c/m_can_suspend(), virtio_net.c/virtnet_freeze() and
  * virtio_card.c/virtsnd_freeze()
  */
-static int virtio_can_freeze(struct virtio_device *vdev)
+static int __maybe_unused virtio_can_freeze(struct virtio_device *vdev)
 {
 	struct virtio_can_priv *priv = vdev->priv;
 	struct net_device *ndev = priv->dev;
@@ -1074,7 +990,7 @@ static int virtio_can_freeze(struct virtio_device *vdev)
 /* Compare with m_can.c/m_can_resume(), virtio_net.c/virtnet_restore() and
  * virtio_card.c/virtsnd_restore()
  */
-static int virtio_can_restore(struct virtio_device *vdev)
+static int __maybe_unused virtio_can_restore(struct virtio_device *vdev)
 {
 	struct virtio_can_priv *priv = vdev->priv;
 	struct net_device *ndev = priv->dev;
@@ -1098,7 +1014,6 @@ static int virtio_can_restore(struct virtio_device *vdev)
 
 	return 0;
 }
-#endif /* #ifdef CONFIG_PM_SLEEP */
 
 static struct virtio_device_id virtio_can_id_table[] = {
 	{ VIRTIO_ID_CAN, VIRTIO_DEV_ANY_ID },
@@ -1115,18 +1030,16 @@ static unsigned int features[] = {
 static struct virtio_driver virtio_can_driver = {
 	.feature_table = features,
 	.feature_table_size = ARRAY_SIZE(features),
-	.feature_table_legacy = NULL,
-	.feature_table_size_legacy = 0u,
-	.driver.name =	KBUILD_MODNAME,
-	.driver.owner =	THIS_MODULE,
-	.id_table =	virtio_can_id_table,
-	.validate =	virtio_can_validate,
-	.probe =	virtio_can_probe,
-	.remove =	virtio_can_remove,
-	.config_changed = NULL,
+	.driver.name = KBUILD_MODNAME,
+	.driver.owner = THIS_MODULE,
+	.id_table = virtio_can_id_table,
+	.validate = virtio_can_validate,
+	.probe = virtio_can_probe,
+	.remove = virtio_can_remove,
+	.config_changed = virtio_can_config_changed,
 #ifdef CONFIG_PM_SLEEP
-	.freeze =	virtio_can_freeze,
-	.restore =	virtio_can_restore,
+	.freeze = virtio_can_freeze,
+	.restore = virtio_can_restore,
 #endif
 };
 

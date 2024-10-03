@@ -1,9 +1,9 @@
 SUMMARY = "VIRTIO CAN device driver"
-
+DESCRIPTION = "Virtio-can kernel driver"
 LICENSE = "BSD-3-Clause & GPL-2.0-only"
 LIC_FILES_CHKSUM = " \
-    file://virtio_can.h;endline=4;md5=d93ffb4ab090b382cbcda4cb2c0e5c9c \
-    file://virtio_can.c;endline=5;md5=06e45bdf8cb26f6a72e240cb1b0c18c2 \
+    file://virtio_can.h;endline=4;md5=e9012c23aaa0bab2876b6051c3f836f3 \
+    file://virtio_can.c;endline=5;md5=a8857c4c5e172b8a9ff9120ef8064632 \
 "
 
 inherit module

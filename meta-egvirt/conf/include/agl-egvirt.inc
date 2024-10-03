@@ -2,7 +2,7 @@ REQUIRED_VERSION_libgpiod = "2.1"
 
 FEATURE_PACKAGES_virtio-loopback = " \
     kernel-module-virtio-loopback \
-    kernel-module-virtio-can \
+    virtio-can-driver \
     virtio-loopback-adapter \
     vhost-device-rng \
     vhost-device-gpio \
