@@ -1,22 +1,22 @@
 // VIRTIO CONSOLE Emulation via vhost-user
 //
-// Copyright 2023 VIRTUAL OPEN SYSTEMS SAS. All Rights Reserved.
+// Copyright 2023-2024 VIRTUAL OPEN SYSTEMS SAS. All Rights Reserved.
 //          Timos Ampelikiotis <t.ampelikiotis@virtualopensystems.com>
 //
 // SPDX-License-Identifier: Apache-2.0 or BSD-3-Clause
 
 use log::{error, info, warn};
-use std::process::exit;
+use std::any::Any;
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
-use std::thread::{spawn, JoinHandle};
+use std::thread::Builder;
 
-use clap::Parser;
 use thiserror::Error as ThisError;
-use vhost::{vhost_user, vhost_user::Listener};
 use vhost_user_backend::VhostUserDaemon;
 use vm_memory::{GuestMemoryAtomic, GuestMemoryMmap};
 
-use crate::console::{ConsoleController};
+use crate::console::{BackendType, ConsoleController};
 use crate::vhu_console::VhostUserConsoleBackend;
 
 pub(crate) type Result<T> = std::result::Result<T, Error>;
@@ -26,186 +26,288 @@ pub(crate) type Result<T> = std::result::Result<T, Error>;
 pub(crate) enum Error {
     #[error("Invalid socket count: {0}")]
     SocketCountInvalid(usize),
-    #[error("Failed to join threads")]
-    FailedJoiningThreads,
-    #[error("Could not create console controller: {0}")]
-    CouldNotCreateConsoleController(crate::console::Error),
     #[error("Could not create console backend: {0}")]
     CouldNotCreateBackend(crate::vhu_console::Error),
     #[error("Could not create daemon: {0}")]
     CouldNotCreateDaemon(vhost_user_backend::Error),
-}
-
-#[derive(Parser, Debug)]
-#[clap(author, version, about, long_about = None)]
-struct ConsoleArgs {
-    /// Location of vhost-user Unix domain socket. This is suffixed by 0,1,2..socket_count-1.
-    #[clap(short, long)]
-    socket_path: String,
-
-    /// A console device name to be used for reading (ex. vconsole, console0, console1, ... etc.)
-    #[clap(short = 'i', long)]
-    console_path: String,
-
-    /// Number of guests (sockets) to connect to.
-    #[clap(short = 'c', long, default_value_t = 1)]
-    socket_count: u32,
+    #[error("Fatal error: {0}")]
+    ServeFailed(vhost_user_backend::Error),
+    #[error("Thread `{0}` panicked")]
+    ThreadPanic(String, Box<dyn Any + Send>),
+    #[error("Error using multiple sockets with Nested backend")]
+    WrongBackendSocket,
 }
 
 #[derive(PartialEq, Debug)]
-struct ConsoleConfiguration {
-    socket_path: String,
-    socket_count: u32,
-    console_path: String,
+pub struct VuConsoleConfig {
+    pub(crate) socket_path: PathBuf,
+    pub(crate) backend: BackendType,
+    pub(crate) tcp_port: String,
+    pub(crate) socket_count: u32,
 }
 
-impl TryFrom<ConsoleArgs> for ConsoleConfiguration {
-    type Error = Error;
+impl VuConsoleConfig {
+    pub fn generate_socket_paths(&self) -> Vec<PathBuf> {
+        let socket_file_name = self
+            .socket_path
+            .file_name()
+            .expect("socket_path has no filename.");
+        let socket_file_parent = self
+            .socket_path
+            .parent()
+            .expect("socket_path has no parent directory.");
 
-    fn try_from(args: ConsoleArgs) -> Result<Self> {
+        let make_socket_path = |i: u32| -> PathBuf {
+            let mut file_name = socket_file_name.to_os_string();
+            file_name.push(std::ffi::OsStr::new(&i.to_string()));
+            socket_file_parent.join(&file_name)
+        };
 
-        if args.socket_count == 0 {
-            return Err(Error::SocketCountInvalid(0));
+        (0..self.socket_count).map(make_socket_path).collect()
+    }
+
+    pub fn generate_tcp_addrs(&self) -> Vec<String> {
+        let tcp_port_base = self.tcp_port.clone();
+
+        let make_tcp_port = |i: u32| -> String {
+            let port_num: u32 = tcp_port_base.clone().parse().unwrap();
+            "127.0.0.1:".to_owned() + &(port_num + i).to_string()
+        };
+
+        (0..self.socket_count).map(make_tcp_port).collect()
+    }
+}
+
+// This is the public API through which an external program starts the
+/// vhost-device-console backend server.
+pub(crate) fn start_backend_server(
+    socket: PathBuf,
+    tcp_addr: String,
+    backend: BackendType,
+) -> Result<()> {
+    loop {
+        let controller = ConsoleController::new(backend);
+        let arc_controller = Arc::new(RwLock::new(controller));
+        let vu_console_backend = Arc::new(RwLock::new(
+            VhostUserConsoleBackend::new(arc_controller).map_err(Error::CouldNotCreateBackend)?,
+        ));
+
+        let mut daemon = VhostUserDaemon::new(
+            String::from("vhost-device-console-backend"),
+            vu_console_backend.clone(),
+            GuestMemoryAtomic::new(GuestMemoryMmap::new()),
+        )
+        .map_err(Error::CouldNotCreateDaemon)?;
+
+        let vring_workers = daemon.get_epoll_handlers();
+        vu_console_backend
+            .read()
+            .unwrap()
+            .set_vring_worker(&vring_workers[0]);
+
+        // Start the corresponding console thread
+        let read_handle = if backend == BackendType::Nested {
+            VhostUserConsoleBackend::start_console_thread(&vu_console_backend)
+        } else {
+            VhostUserConsoleBackend::start_tcp_console_thread(&vu_console_backend, tcp_addr.clone())
+        };
+
+        daemon.serve(&socket).map_err(Error::ServeFailed)?;
+
+        // Kill console input thread
+        vu_console_backend.read().unwrap().kill_console_thread();
+
+        // Wait for read thread to exit
+        match read_handle.join() {
+            Ok(_) => info!("The read thread returned successfully"),
+            Err(e) => warn!("The read thread returned the error: {:?}", e),
         }
-
-		let console_path = args.console_path.trim().to_string();
-
-        Ok(ConsoleConfiguration {
-            socket_path: args.socket_path,
-			socket_count: args.socket_count,
-            console_path,
-        })
     }
 }
 
-fn start_backend(args: ConsoleArgs) -> Result<()> {
+pub fn start_backend(config: VuConsoleConfig) -> Result<()> {
+    let mut handles = HashMap::new();
+    let (senders, receiver) = std::sync::mpsc::channel();
+    let tcp_addrs = config.generate_tcp_addrs();
+    let backend = config.backend;
 
-	println!("start_backend function!\n");
+    for (thread_id, (socket, tcp_addr)) in config
+        .generate_socket_paths()
+        .into_iter()
+        .zip(tcp_addrs.iter())
+        .enumerate()
+    {
+        let tcp_addr = tcp_addr.clone();
+        info!("thread_id: {}, socket: {:?}", thread_id, socket);
 
-    let config = ConsoleConfiguration::try_from(args).unwrap();
-    let mut handles = Vec::new();
+        let name = format!("vhu-console-{}", tcp_addr);
+        let sender = senders.clone();
+        let handle = Builder::new()
+            .name(name.clone())
+            .spawn(move || {
+                let result = std::panic::catch_unwind(move || {
+                    start_backend_server(socket, tcp_addr.to_string(), backend)
+                });
 
-    for _ in 0..config.socket_count {
-        let socket = config.socket_path.to_owned();
-        let console_path = config.console_path.to_owned();
+                // Notify the main thread that we are done.
+                sender.send(thread_id).unwrap();
 
-        let handle: JoinHandle<Result<()>> = spawn(move || loop {
-            // A separate thread is spawned for each socket and console connect to a separate guest.
-            // These are run in an infinite loop to not require the daemon to be restarted once a
-            // guest exits.
-            //
-            // There isn't much value in complicating code here to return an error from the
-            // threads, and so the code uses unwrap() instead. The panic on a thread won't cause
-            // trouble to other threads/guests or the main() function and should be safe for the
-            // daemon.
-
-            let controller =
-                ConsoleController::new(console_path.clone()).map_err(Error::CouldNotCreateConsoleController)?;
-			let arc_controller =  Arc::new(RwLock::new(controller));
-            let vu_console_backend = Arc::new(RwLock::new(
-                VhostUserConsoleBackend::new(arc_controller).map_err(Error::CouldNotCreateBackend)?,
-            ));
-
-            let mut daemon = VhostUserDaemon::new(
-                String::from("vhost-device-console-backend"),
-                vu_console_backend.clone(),
-                GuestMemoryAtomic::new(GuestMemoryMmap::new()),
-            )
-            .map_err(Error::CouldNotCreateDaemon)?;
-
-            /* Start the read thread -- need to handle it after termination */
-            let vring_workers = daemon.get_epoll_handlers();
-            vu_console_backend.read()
-                          .unwrap()
-                          .set_vring_worker(&vring_workers[0]);
-			VhostUserConsoleBackend::start_console_thread(&vu_console_backend);
-
-            let listener = Listener::new(socket.clone(), true).unwrap();
-            daemon.start(listener).unwrap();
-
-            match daemon.wait() {
-                Ok(()) => {
-                    info!("Stopping cleanly.");
-                }
-                Err(vhost_user_backend::Error::HandleRequest(
-                    vhost_user::Error::PartialMessage | vhost_user::Error::Disconnected,
-                )) => {
-                    info!("vhost-user connection closed with partial message. If the VM is shutting down, this is expected behavior; otherwise, it might be a bug.");
-                }
-                Err(e) => {
-                    warn!("Error running daemon: {:?}", e);
-                }
-            }
-
-            // No matter the result, we need to shut down the worker thread.
-            vu_console_backend.read().unwrap().exit_event.write(1).unwrap();
-        });
-
-        handles.push(handle);
+                result.map_err(|e| Error::ThreadPanic(name, e))?
+            })
+            .unwrap();
+        handles.insert(thread_id, handle);
     }
 
-    for handle in handles {
-        handle.join().map_err(|_| Error::FailedJoiningThreads)??;
+    while !handles.is_empty() {
+        let thread_id = receiver.recv().unwrap();
+        handles
+            .remove(&thread_id)
+            .unwrap()
+            .join()
+            .map_err(std::panic::resume_unwind)
+            .unwrap()?;
     }
 
     Ok(())
 }
 
-pub(crate) fn console_init() {
-    env_logger::init();
-	println!("Console_init function!");
-    if let Err(e) = start_backend(ConsoleArgs::parse()) {
-        error!("{e}");
-        exit(1);
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ConsoleArgs;
+    use assert_matches::assert_matches;
 
     #[test]
-    fn test_console_configuration_try_from_valid_args() {
+    fn test_console_valid_configuration_nested() {
         let args = ConsoleArgs {
-            socket_path: String::from("/path/to/socket"),
-            console_path: String::from("vconsole"),
-            socket_count: 3,
+            socket_path: String::from("/tmp/vhost.sock").into(),
+            backend: BackendType::Nested,
+            tcp_port: String::from("12345"),
+            socket_count: 1,
         };
 
-        let result = ConsoleConfiguration::try_from(args);
-
-        assert!(result.is_ok());
-
-        let config = result.unwrap();
-        assert_eq!(config.socket_path, "/path/to/socket");
-        assert_eq!(config.console_path, "vconsole");
-        assert_eq!(config.socket_count, 3);
+        assert!(VuConsoleConfig::try_from(args).is_ok());
     }
 
     #[test]
-    fn test_console_configuration_try_from_invalid_args() {
-        // Test with socket_count = 0
-        let args_invalid_count = ConsoleArgs {
-            socket_path: String::from("/path/to/socket"),
-            console_path: String::from("vconsole"),
+    fn test_console_invalid_configuration_nested_1() {
+        let args = ConsoleArgs {
+            socket_path: String::from("/tmp/vhost.sock").into(),
+            backend: BackendType::Nested,
+            tcp_port: String::from("12345"),
             socket_count: 0,
         };
 
-        let result_invalid_count = ConsoleConfiguration::try_from(args_invalid_count);
-        assert!(result_invalid_count.is_err());
+        assert_matches!(
+            VuConsoleConfig::try_from(args),
+            Err(Error::SocketCountInvalid(0))
+        );
     }
 
     #[test]
-    fn test_start_backend_success() {
-        // Test start_backend with valid arguments
+    fn test_console_invalid_configuration_nested_2() {
         let args = ConsoleArgs {
-            socket_path: String::from("/path/to/socket"),
-            console_path: String::from("vconsole"),
+            socket_path: String::from("/tmp/vhost.sock").into(),
+            backend: BackendType::Nested,
+            tcp_port: String::from("12345"),
             socket_count: 2,
         };
 
-        let result = start_backend(args);
+        assert_matches!(
+            VuConsoleConfig::try_from(args),
+            Err(Error::WrongBackendSocket)
+        );
+    }
 
-        assert!(result.is_ok());
+    #[test]
+    fn test_console_valid_configuration_network_1() {
+        let args = ConsoleArgs {
+            socket_path: String::from("/tmp/vhost.sock").into(),
+            backend: BackendType::Network,
+            tcp_port: String::from("12345"),
+            socket_count: 1,
+        };
+
+        assert!(VuConsoleConfig::try_from(args).is_ok());
+    }
+
+    #[test]
+    fn test_console_valid_configuration_network_2() {
+        let args = ConsoleArgs {
+            socket_path: String::from("/tmp/vhost.sock").into(),
+            backend: BackendType::Network,
+            tcp_port: String::from("12345"),
+            socket_count: 2,
+        };
+
+        assert!(VuConsoleConfig::try_from(args).is_ok());
+    }
+
+    fn test_backend_start_and_stop(args: ConsoleArgs) {
+        let config = VuConsoleConfig::try_from(args).expect("Wrong config");
+
+        let tcp_addrs = config.generate_tcp_addrs();
+        let backend = config.backend;
+
+        for (_socket, tcp_addr) in config
+            .generate_socket_paths()
+            .into_iter()
+            .zip(tcp_addrs.iter())
+        {
+            let controller = ConsoleController::new(backend);
+            let arc_controller = Arc::new(RwLock::new(controller));
+            let vu_console_backend = Arc::new(RwLock::new(
+                VhostUserConsoleBackend::new(arc_controller)
+                    .map_err(Error::CouldNotCreateBackend)
+                    .expect("Fail create vhuconsole backend"),
+            ));
+
+            let mut _daemon = VhostUserDaemon::new(
+                String::from("vhost-device-console-backend"),
+                vu_console_backend.clone(),
+                GuestMemoryAtomic::new(GuestMemoryMmap::new()),
+            )
+            .map_err(Error::CouldNotCreateDaemon)
+            .expect("Failed create daemon");
+
+            // Start the corresponinding console thread
+            let read_handle = if backend == BackendType::Nested {
+                VhostUserConsoleBackend::start_console_thread(&vu_console_backend)
+            } else {
+                VhostUserConsoleBackend::start_tcp_console_thread(
+                    &vu_console_backend,
+                    tcp_addr.clone(),
+                )
+            };
+
+            // Kill console input thread
+            vu_console_backend.read().unwrap().kill_console_thread();
+
+            // Wait for read thread to exit
+            assert_matches!(read_handle.join(), Ok(_));
+        }
+    }
+    #[test]
+    fn test_start_net_backend_success() {
+        let args = ConsoleArgs {
+            socket_path: String::from("/tmp/vhost.sock").into(),
+            backend: BackendType::Network,
+            tcp_port: String::from("12345"),
+            socket_count: 1,
+        };
+
+        test_backend_start_and_stop(args);
+    }
+
+    #[test]
+    fn test_start_nested_backend_success() {
+        let args = ConsoleArgs {
+            socket_path: String::from("/tmp/vhost.sock").into(),
+            backend: BackendType::Nested,
+            tcp_port: String::from("12345"),
+            socket_count: 1,
+        };
+
+        test_backend_start_and_stop(args);
     }
 }
