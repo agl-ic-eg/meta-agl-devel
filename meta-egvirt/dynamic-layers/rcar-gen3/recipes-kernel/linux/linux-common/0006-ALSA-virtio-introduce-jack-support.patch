@@ -1,0 +1,353 @@
+From 7ed6e645e3d37217f0ac6536c83575956a5a8c1d Mon Sep 17 00:00:00 2001
+From: Anton Yakovlev <anton.yakovlev@opensynergy.com>
+Date: Tue, 2 Mar 2021 17:47:07 +0100
+Subject: [PATCH 6/9] ALSA: virtio: introduce jack support
+
+Enumerate all available jacks and create ALSA controls.
+
+At the moment jacks have a simple implementation and can only be used
+to receive notifications about a plugged in/out device.
+
+Signed-off-by: Anton Yakovlev <anton.yakovlev@opensynergy.com>
+Link: https://lore.kernel.org/r/20210302164709.3142702-8-anton.yakovlev@opensynergy.com
+Signed-off-by: Takashi Iwai <tiwai@suse.de>
+---
+ sound/virtio/Makefile      |   1 +
+ sound/virtio/virtio_card.c |  14 +++
+ sound/virtio/virtio_card.h |  12 ++
+ sound/virtio/virtio_jack.c | 233 +++++++++++++++++++++++++++++++++++++
+ 4 files changed, 260 insertions(+)
+ create mode 100644 sound/virtio/virtio_jack.c
+
+diff --git a/sound/virtio/Makefile b/sound/virtio/Makefile
+index 34493226793f..09f485291285 100644
+--- a/sound/virtio/Makefile
++++ b/sound/virtio/Makefile
+@@ -5,6 +5,7 @@ obj-$(CONFIG_SND_VIRTIO) += virtio_snd.o
+ virtio_snd-objs := \
+ 	virtio_card.o \
+ 	virtio_ctl_msg.o \
++	virtio_jack.o \
+ 	virtio_pcm.o \
+ 	virtio_pcm_msg.o \
+ 	virtio_pcm_ops.o
+diff --git a/sound/virtio/virtio_card.c b/sound/virtio/virtio_card.c
+index 57b9b7f3a9c0..89bd66c1256e 100644
+--- a/sound/virtio/virtio_card.c
++++ b/sound/virtio/virtio_card.c
+@@ -56,6 +56,10 @@ static void virtsnd_event_dispatch(struct virtio_snd *snd,
+ 				   struct virtio_snd_event *event)
+ {
+ 	switch (le32_to_cpu(event->hdr.code)) {
++	case VIRTIO_SND_EVT_JACK_CONNECTED:
++	case VIRTIO_SND_EVT_JACK_DISCONNECTED:
++		virtsnd_jack_event(snd, event);
++		break;
+ 	case VIRTIO_SND_EVT_PCM_PERIOD_ELAPSED:
+ 	case VIRTIO_SND_EVT_PCM_XRUN:
+ 		virtsnd_pcm_event(snd, event);
+@@ -219,10 +223,20 @@ static int virtsnd_build_devs(struct virtio_snd *snd)
+ 			 VIRTIO_SND_CARD_NAME " at %s/%s",
+ 			 dev_name(dev->parent), dev_name(dev));
+ 
++	rc = virtsnd_jack_parse_cfg(snd);
++	if (rc)
++		return rc;
++
+ 	rc = virtsnd_pcm_parse_cfg(snd);
+ 	if (rc)
+ 		return rc;
+ 
++	if (snd->njacks) {
++		rc = virtsnd_jack_build_devs(snd);
++		if (rc)
++			return rc;
++	}
++
+ 	if (snd->nsubstreams) {
+ 		rc = virtsnd_pcm_build_devs(snd);
+ 		if (rc)
+diff --git a/sound/virtio/virtio_card.h b/sound/virtio/virtio_card.h
+index c43f9744d362..f154313c79fd 100644
+--- a/sound/virtio/virtio_card.h
++++ b/sound/virtio/virtio_card.h
+@@ -18,6 +18,7 @@
+ #define VIRTIO_SND_CARD_NAME	"VirtIO SoundCard"
+ #define VIRTIO_SND_PCM_NAME	"VirtIO PCM"
+ 
++struct virtio_jack;
+ struct virtio_pcm_substream;
+ 
+ /**
+@@ -38,6 +39,8 @@ struct virtio_snd_queue {
+  * @ctl_msgs: Pending control request list.
+  * @event_msgs: Device events.
+  * @pcm_list: VirtIO PCM device list.
++ * @jacks: VirtIO jacks.
++ * @njacks: Number of jacks.
+  * @substreams: VirtIO PCM substreams.
+  * @nsubstreams: Number of PCM substreams.
+  */
+@@ -48,6 +51,8 @@ struct virtio_snd {
+ 	struct list_head ctl_msgs;
+ 	struct virtio_snd_event *event_msgs;
+ 	struct list_head pcm_list;
++	struct virtio_jack *jacks;
++	u32 njacks;
+ 	struct virtio_pcm_substream *substreams;
+ 	u32 nsubstreams;
+ };
+@@ -88,4 +93,11 @@ virtsnd_pcm_queue(struct virtio_pcm_substream *vss)
+ 		return virtsnd_rx_queue(vss->snd);
+ }
+ 
++int virtsnd_jack_parse_cfg(struct virtio_snd *snd);
++
++int virtsnd_jack_build_devs(struct virtio_snd *snd);
++
++void virtsnd_jack_event(struct virtio_snd *snd,
++			struct virtio_snd_event *event);
++
+ #endif /* VIRTIO_SND_CARD_H */
+diff --git a/sound/virtio/virtio_jack.c b/sound/virtio/virtio_jack.c
+new file mode 100644
+index 000000000000..c69f1dcdcc84
+--- /dev/null
++++ b/sound/virtio/virtio_jack.c
+@@ -0,0 +1,233 @@
++// SPDX-License-Identifier: GPL-2.0+
++/*
++ * virtio-snd: Virtio sound device
++ * Copyright (C) 2021 OpenSynergy GmbH
++ */
++#include <linux/virtio_config.h>
++#include <sound/jack.h>
++#include <sound/hda_verbs.h>
++
++#include "virtio_card.h"
++
++/**
++ * DOC: Implementation Status
++ *
++ * At the moment jacks have a simple implementation and can only be used to
++ * receive notifications about a plugged in/out device.
++ *
++ * VIRTIO_SND_R_JACK_REMAP
++ *   is not supported
++ */
++
++/**
++ * struct virtio_jack - VirtIO jack.
++ * @jack: Kernel jack control.
++ * @nid: Functional group node identifier.
++ * @features: Jack virtio feature bit map (1 << VIRTIO_SND_JACK_F_XXX).
++ * @defconf: Pin default configuration value.
++ * @caps: Pin capabilities value.
++ * @connected: Current jack connection status.
++ * @type: Kernel jack type (SND_JACK_XXX).
++ */
++struct virtio_jack {
++	struct snd_jack *jack;
++	u32 nid;
++	u32 features;
++	u32 defconf;
++	u32 caps;
++	bool connected;
++	int type;
++};
++
++/**
++ * virtsnd_jack_get_label() - Get the name string for the jack.
++ * @vjack: VirtIO jack.
++ *
++ * Returns the jack name based on the default pin configuration value (see HDA
++ * specification).
++ *
++ * Context: Any context.
++ * Return: Name string.
++ */
++static const char *virtsnd_jack_get_label(struct virtio_jack *vjack)
++{
++	unsigned int defconf = vjack->defconf;
++	unsigned int device =
++		(defconf & AC_DEFCFG_DEVICE) >> AC_DEFCFG_DEVICE_SHIFT;
++	unsigned int location =
++		(defconf & AC_DEFCFG_LOCATION) >> AC_DEFCFG_LOCATION_SHIFT;
++
++	switch (device) {
++	case AC_JACK_LINE_OUT:
++		return "Line Out";
++	case AC_JACK_SPEAKER:
++		return "Speaker";
++	case AC_JACK_HP_OUT:
++		return "Headphone";
++	case AC_JACK_CD:
++		return "CD";
++	case AC_JACK_SPDIF_OUT:
++	case AC_JACK_DIG_OTHER_OUT:
++		if (location == AC_JACK_LOC_HDMI)
++			return "HDMI Out";
++		else
++			return "SPDIF Out";
++	case AC_JACK_LINE_IN:
++		return "Line";
++	case AC_JACK_AUX:
++		return "Aux";
++	case AC_JACK_MIC_IN:
++		return "Mic";
++	case AC_JACK_SPDIF_IN:
++		return "SPDIF In";
++	case AC_JACK_DIG_OTHER_IN:
++		return "Digital In";
++	default:
++		return "Misc";
++	}
++}
++
++/**
++ * virtsnd_jack_get_type() - Get the type for the jack.
++ * @vjack: VirtIO jack.
++ *
++ * Returns the jack type based on the default pin configuration value (see HDA
++ * specification).
++ *
++ * Context: Any context.
++ * Return: SND_JACK_XXX value.
++ */
++static int virtsnd_jack_get_type(struct virtio_jack *vjack)
++{
++	unsigned int defconf = vjack->defconf;
++	unsigned int device =
++		(defconf & AC_DEFCFG_DEVICE) >> AC_DEFCFG_DEVICE_SHIFT;
++
++	switch (device) {
++	case AC_JACK_LINE_OUT:
++	case AC_JACK_SPEAKER:
++		return SND_JACK_LINEOUT;
++	case AC_JACK_HP_OUT:
++		return SND_JACK_HEADPHONE;
++	case AC_JACK_SPDIF_OUT:
++	case AC_JACK_DIG_OTHER_OUT:
++		return SND_JACK_AVOUT;
++	case AC_JACK_MIC_IN:
++		return SND_JACK_MICROPHONE;
++	default:
++		return SND_JACK_LINEIN;
++	}
++}
++
++/**
++ * virtsnd_jack_parse_cfg() - Parse the jack configuration.
++ * @snd: VirtIO sound device.
++ *
++ * This function is called during initial device initialization.
++ *
++ * Context: Any context that permits to sleep.
++ * Return: 0 on success, -errno on failure.
++ */
++int virtsnd_jack_parse_cfg(struct virtio_snd *snd)
++{
++	struct virtio_device *vdev = snd->vdev;
++	struct virtio_snd_jack_info *info;
++	u32 i;
++	int rc;
++
++	virtio_cread_le(vdev, struct virtio_snd_config, jacks, &snd->njacks);
++	if (!snd->njacks)
++		return 0;
++
++	snd->jacks = devm_kcalloc(&vdev->dev, snd->njacks, sizeof(*snd->jacks),
++				  GFP_KERNEL);
++	if (!snd->jacks)
++		return -ENOMEM;
++
++	info = kcalloc(snd->njacks, sizeof(*info), GFP_KERNEL);
++	if (!info)
++		return -ENOMEM;
++
++	rc = virtsnd_ctl_query_info(snd, VIRTIO_SND_R_JACK_INFO, 0, snd->njacks,
++				    sizeof(*info), info);
++	if (rc)
++		goto on_exit;
++
++	for (i = 0; i < snd->njacks; ++i) {
++		struct virtio_jack *vjack = &snd->jacks[i];
++
++		vjack->nid = le32_to_cpu(info[i].hdr.hda_fn_nid);
++		vjack->features = le32_to_cpu(info[i].features);
++		vjack->defconf = le32_to_cpu(info[i].hda_reg_defconf);
++		vjack->caps = le32_to_cpu(info[i].hda_reg_caps);
++		vjack->connected = info[i].connected;
++	}
++
++on_exit:
++	kfree(info);
++
++	return rc;
++}
++
++/**
++ * virtsnd_jack_build_devs() - Build ALSA controls for jacks.
++ * @snd: VirtIO sound device.
++ *
++ * Context: Any context that permits to sleep.
++ * Return: 0 on success, -errno on failure.
++ */
++int virtsnd_jack_build_devs(struct virtio_snd *snd)
++{
++	u32 i;
++	int rc;
++
++	for (i = 0; i < snd->njacks; ++i) {
++		struct virtio_jack *vjack = &snd->jacks[i];
++
++		vjack->type = virtsnd_jack_get_type(vjack);
++
++		rc = snd_jack_new(snd->card, virtsnd_jack_get_label(vjack),
++				  vjack->type, &vjack->jack, true, true);
++		if (rc)
++			return rc;
++
++		if (vjack->jack)
++			vjack->jack->private_data = vjack;
++
++		snd_jack_report(vjack->jack,
++				vjack->connected ? vjack->type : 0);
++	}
++
++	return 0;
++}
++
++/**
++ * virtsnd_jack_event() - Handle the jack event notification.
++ * @snd: VirtIO sound device.
++ * @event: VirtIO sound event.
++ *
++ * Context: Interrupt context.
++ */
++void virtsnd_jack_event(struct virtio_snd *snd, struct virtio_snd_event *event)
++{
++	u32 jack_id = le32_to_cpu(event->data);
++	struct virtio_jack *vjack;
++
++	if (jack_id >= snd->njacks)
++		return;
++
++	vjack = &snd->jacks[jack_id];
++
++	switch (le32_to_cpu(event->hdr.code)) {
++	case VIRTIO_SND_EVT_JACK_CONNECTED:
++		vjack->connected = true;
++		break;
++	case VIRTIO_SND_EVT_JACK_DISCONNECTED:
++		vjack->connected = false;
++		break;
++	default:
++		return;
++	}
++
++	snd_jack_report(vjack->jack, vjack->connected ? vjack->type : 0);
++}
+-- 
+2.34.1
+
