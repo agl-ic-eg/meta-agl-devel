@@ -23,20 +23,18 @@ export LIBTOOL="${HOST_SYS}-libtool"
 
 B = "${WORKDIR}/build"
 
+do_configure[cleandirs] += "${B}"
 do_configure() {
     unset bindir libdir mandir datadir includedir libexecdir
     # Pass empty --cross-prefix to suspend errors due to build configurations
     # on different architectures. CC/CXX and other build variables are set by Yocto
     # itself correct.
-    ${S}/configure --cross-prefix=
+    ${S}/configure --disable-werror --cross-prefix=
 }
-do_configure[cleandirs] += "${B}"
 
 do_install() {
         mkdir ${D}/usr/bin/ -p
-        install -m 0755 ${S}/../build/contrib/vhost-user-input/vhost-user-input ${D}/usr/bin/
-        install -m 0755 ${S}/../build/contrib/vhost-user-blk/vhost-user-blk ${D}/usr/bin/
-        install -m 0755 ${S}/../build/tools/vhost-user-rng/vhost-user-rng ${D}/usr/bin/
+        install -m 0755 ${B}/contrib/vhost-user-blk/vhost-user-blk ${D}/usr/bin/
 }
 
 FILES:${PN} += "/usr/bin"
