@@ -16,3 +16,18 @@ SRC_URI += " \
 SRC_URI += " \
     file://virtio_loopback.cfg \
 "
+
+# virtio can
+SRC_URI += " \
+    file://virtio_can.cfg \
+"
+
+# virtio input
+SRC_URI += " \
+    file://virtio_input.cfg \
+"
+
+# virtio sound
+SRC_URI += " \
+    file://virtio_sound.cfg \
+"
