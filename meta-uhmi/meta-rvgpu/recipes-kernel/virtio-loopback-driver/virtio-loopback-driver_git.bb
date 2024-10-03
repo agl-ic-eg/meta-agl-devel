@@ -1,13 +1,9 @@
-SUMMARY = "Virtio Loopback Driver for Remote virtual display device"
+SUMMARY = "Remote virtual display device driver"
 
 LICENSE = "GPL-2.0-only"
 LIC_FILES_CHKSUM = "file://LICENSE.md;md5=688693ebbe31e3eadf819d7d007fa654"
 
 require virtio-loopback-driver.inc
-
-SRC_URI:append = " \
-    file://0001-Remove-card_index-option.patch \
-"
 
 S = "${WORKDIR}/git"
 
