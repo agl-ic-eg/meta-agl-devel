@@ -1,0 +1,17 @@
+[Unit]
+Description=uhmi ivi window manager
+After=weston.service
+
+[Service]
+Environment="XDG_RUNTIME_DIR=/run/user/1001"
+Environment="WAYLAND_DISPLAY=wayland-0"
+EnvironmentFile=-/etc/default/uhmi-ivi-wm
+
+Type=simple
+ExecStart=/usr/bin/uhmi-ivi-wm
+KillSignal=SIGKILL
+Restart=always
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target
