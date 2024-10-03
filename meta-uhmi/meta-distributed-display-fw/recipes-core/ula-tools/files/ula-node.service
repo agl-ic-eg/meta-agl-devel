@@ -1,0 +1,15 @@
+[Unit]
+Description=ula-node
+Requires=uhmi-ivi-wm.service
+After=uhmi-ivi-wm.service
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/ula-node
+KillSignal=SIGTERM
+TimeoutStopSec=10
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

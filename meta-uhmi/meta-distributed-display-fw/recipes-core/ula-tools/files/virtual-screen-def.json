@@ -1,0 +1,25 @@
+{
+    "virtual_screen_2d" : {
+        "size" : {"virtual_w" : 3840, "virtual_h": 1080},
+        "virtual_displays" : [
+            {"vdisplay_id":0,  "disp_name": "AGL_SCREEN0", "virtual_x":0, "virtual_y":0, "virtual_w":1920, "virtual_h":1080},
+	    {"vdisplay_id":1,  "disp_name": "AGL_SCREEN1", "virtual_x":1920, "virtual_y":0, "virtual_w":1920, "virtual_h":1080}
+        ]
+    },
+    "virtual_screen_3d" : {},
+    "real_displays" : [
+        {"node_id":0,  "vdisplay_id":0, "pixel_w":1920, "pixel_h":1080, "rdisplay_id" : 0},
+	{"node_id":1,  "vdisplay_id":1, "pixel_w":1920, "pixel_h":1080, "rdisplay_id" : 0}
+    ],
+    "node" : [
+        {"node_id":0,  "hostname":"agl-host0",         "ip":"192.168.0.100"},
+	{"node_id":1,  "hostname":"agl-host1",         "ip":"192.168.0.101"}
+    ],
+    "distributed_window_system" : {
+        "window_manager":{},
+        "framework_node":[
+            {"node_id":0,   "ula": {"debug":false, "debug_port":8080, "port":10100}, "ucl": {"port":7654}},
+	    {"node_id":1,   "ula": {"debug":false, "debug_port":8080, "port":10100}, "ucl": {"port":7654}}
+	]
+    }
+}

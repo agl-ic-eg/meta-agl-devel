@@ -1,0 +1,13 @@
+[Unit]
+Description=ucl-launcher
+
+[Service]
+Type=idle
+ExecStart=/usr/bin/ucl-launcher
+KillSignal=SIGTERM
+TimeoutStopSec=10
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
