@@ -7,5 +7,5 @@ RDEPENDS:${PN} += " \
     remote-virtio-gpu \
     virtio-loopback-driver \
     mesa-virtio \
-    weston \
+    rvgpu-wlproxy \
 "
