@@ -6,10 +6,9 @@ SECTION = "graphics"
 LICENSE = "Apache-2.0"
 LIC_FILES_CHKSUM = "file://LICENSE;md5=4202492ed9afcab3aaecc4a9ec32adb2"
 
-SRC_URI = "\
-    git://gerrit.automotivelinux.org/gerrit/apps/flutter-speechrecognition-demo;protocol=https;branch=${AGL_BRANCH} \
-    file://agl-app-flutter@flutter_voiceassistant.service \  
-"
+SRC_URI = "git://gerrit.automotivelinux.org/gerrit/apps/flutter-speechrecognition-demo;protocol=https;branch=${AGL_BRANCH} \
+           file://agl-app-flutter@flutter_voiceassistant.service \
+           "
 
 SRCREV = "${AUTOREV}"
 S = "${WORKDIR}/git"
@@ -19,7 +18,6 @@ inherit agl-app flutter-app
 # flutter-app
 #############
 PUBSPEC_APPNAME = "flutter_voiceassistant"
-FLUTTER_APPLICATION_INSTALL_PREFIX = "/flutter"
 FLUTTER_BUILD_ARGS = "bundle -v"
 
 # agl-app

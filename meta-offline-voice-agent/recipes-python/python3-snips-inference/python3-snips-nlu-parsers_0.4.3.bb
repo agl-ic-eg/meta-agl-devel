@@ -8,6 +8,7 @@ LIC_FILES_CHKSUM = " \
 
 SRC_URI += " \
     git://github.com/snipsco/snips-nlu-parsers;protocol=https;branch=master \
+    file://0001-Update-dependencies-in-snips-nlu-parsers.patch \
     "
 
 PV = "0.4.3+git${SRCPV}"
