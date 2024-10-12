@@ -16,7 +16,7 @@ SRC_URI = "git://git.automotivelinux.org/apps/momiscreen;protocol=https;branch=$
            file://momiscreen.service \
            file://momiscreen \
           "
-SRCREV = "88fb60ad9d0c673f868d907ca451462ec16c9d7f"
+SRCREV = "bfbac0b1f78962e19ceac8356a6c0c77ccce795b"
 
 S = "${WORKDIR}/git"
 
