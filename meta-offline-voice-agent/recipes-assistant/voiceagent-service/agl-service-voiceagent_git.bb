@@ -9,7 +9,7 @@ SRC_URI = " \
     file://voice-agent-config.ini \
 "
 
-SRCREV = "${AUTOREV}"
+SRCREV = "5a8f670c3f772cfe0345ed53e5989a6dca08a905"
 S = "${WORKDIR}/git"
 
 # Speech to Text Model Name, use 'vosk-model-en-us-0.22' for better performance

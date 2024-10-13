@@ -10,7 +10,7 @@ SRC_URI = "git://gerrit.automotivelinux.org/gerrit/apps/flutter-speechrecognitio
            file://agl-app-flutter@flutter_voiceassistant.service \
            "
 
-SRCREV = "${AUTOREV}"
+SRCREV = "53d2b7ba70f9d6cb7033981853fb37a3028b0b5a"
 S = "${WORKDIR}/git"
 
 inherit agl-app flutter-app 

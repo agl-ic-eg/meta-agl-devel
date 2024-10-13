@@ -7,7 +7,7 @@ SRC_URI = " \
     git://gerrit.automotivelinux.org/gerrit/src/snips-model-agl;protocol=https;branch=${AGL_BRANCH} \
 "
 
-SRCREV = "${AUTOREV}"
+SRCREV = "2758be6cfabe4a8e1bb784dd5fb7e87a6a500c7c"
 S = "${WORKDIR}/git"
 
 do_install() {

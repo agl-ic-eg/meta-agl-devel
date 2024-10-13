@@ -7,7 +7,7 @@ SRC_URI += " \
     git://gerrit.automotivelinux.org/gerrit/src/snips-inference-agl;protocol=https;branch=${AGL_BRANCH} \
     "
 
-SRCREV = "${AUTOREV}"
+SRCREV = "6eee72109470897ce1e5446b2b6a0a5e579e942a"
 S = "${WORKDIR}/git"
 
 DEPENDS += " \
