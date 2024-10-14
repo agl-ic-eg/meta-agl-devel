@@ -19,7 +19,6 @@ FEATURE_PACKAGES_agl-offline-voice-agent:append = " \
     python3-vosk-api \ 
     python3-vosk-websocket-server \
     python3-sounddevice \
-    flutter-voiceassistant \
     agl-service-voiceagent \
     whisper-cpp \
     whisper-cpp-tiny \
