@@ -10,7 +10,7 @@ SRC_URI = "git://gerrit.automotivelinux.org/gerrit/src/virtio/virtio-loopback-dr
 SRCREV = "8948c9808eded80772de98cd4e8dd0cc71fdbe17"
 
 S = "${WORKDIR}/git"
+UNPACKDIR = "${S}"
 
-MAKE_TARGETS = "-C ${STAGING_KERNEL_DIR} M=${WORKDIR}/git"
-MODULES_INSTALL_TARGET = "-C ${STAGING_KERNEL_DIR} M=${WORKDIR}/git modules_install"
-
+MAKE_TARGETS = "-C ${STAGING_KERNEL_DIR} M=${S}"
+MODULES_INSTALL_TARGET = "-C ${STAGING_KERNEL_DIR} M=${S} modules_install"
