@@ -6,6 +6,7 @@ IMAGE_ROOTFS_EXTRA_SPACE:append = "${@bb.utils.contains("DISTRO_FEATURES", "syst
 
 IMAGE_INSTALL += " \
     packagegroup-agl-container-feature-logging-guest \
+    ${@bb.utils.contains('VIRTUAL-RUNTIME_net_manager', 'systemd', 'systemd-timesyncd-guest', '', d)} \
 "
 
 FEATURE_PACKAGES_selinux:remove = " \

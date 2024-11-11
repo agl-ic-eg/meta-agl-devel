@@ -10,7 +10,6 @@ IMAGE_INSTALL += " \
     mominavi \
     momiplay \
     momiweather \
-    chrony \
     systemd-netif-config \
     ttf-dejavu-sans \
     ttf-dejavu-sans-mono \
