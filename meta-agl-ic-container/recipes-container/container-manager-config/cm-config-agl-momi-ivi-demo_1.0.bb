@@ -12,6 +12,7 @@ do_install:append() {
     install -Dm644 ${WORKDIR}/agl-momi-ivi-demo.json ${D}/opt/container/conf/agl-momi-ivi-demo.json
     install -d ${D}/opt/container/guests/agl-momi-ivi-demo/rootfs
     install -d ${D}/opt/container/guests/agl-momi-ivi-demo/nv
+    install -d ${D}/opt/container/guests/agl-momi-ivi-demo/shmounts
 }
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"

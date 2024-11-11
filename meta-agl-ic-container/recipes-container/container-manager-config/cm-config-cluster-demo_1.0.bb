@@ -13,6 +13,7 @@ do_install:append() {
     install -Dm644 ${WORKDIR}/cluster-demo.json ${D}/opt/container/conf/cluster-demo.json
     install -d ${D}/opt/container/guests/cluster-demo/rootfs
     install -d ${D}/opt/container/guests/cluster-demo/nv
+    install -d ${D}/opt/container/guests/cluster-demo/shmounts
 }
 
 PACKAGE_ARCH = "${MACHINE_ARCH}"
