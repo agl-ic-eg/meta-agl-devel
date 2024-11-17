@@ -6,6 +6,7 @@ Wants=drm-lease-manager.service lxc-net.service multi-user.target
 [Service]
 Type=notify
 ExecStart=/usr/bin/containermanager
+Delegate=true
 
 [Install]
 WantedBy=multi-user.target
