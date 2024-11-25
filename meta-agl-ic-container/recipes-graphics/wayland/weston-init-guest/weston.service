@@ -1,0 +1,21 @@
+[Unit]
+Description=Weston Wayland Compositor
+RequiresMountsFor=/run
+After=multi-user.target
+Wants=multi-user.target
+
+[Service]
+User=root
+PAMName=login
+EnvironmentFile=-/etc/default/weston
+StandardError=journal
+PermissionsStartOnly=true
+IgnoreSIGPIPE=no
+Type=notify
+Restart=on-failure
+StartLimitInterval=0
+
+ExecStart=/usr/bin/weston --config /etc/xdg/weston/weston.ini --idle-time=0 --drm-lease=${DRM_LEASE_DEVICE} --log=/var/log/weston.log
+
+[Install]
+WantedBy=multi-user.target

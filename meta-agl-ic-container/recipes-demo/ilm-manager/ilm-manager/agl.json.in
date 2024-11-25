@@ -1,0 +1,70 @@
+{
+	"screen": [
+		{
+			"name": "ivi-screen",
+			"dispname": "@DRM_IVI_DEVICE@"
+		}
+	],
+	"layer": [
+		{
+			"name": "ivi-layer",
+			"id": 2000,
+			"width": 1920,
+			"height": 1080,
+			"x": 0,
+			"y": 0,
+			"z": 10,
+			"attach": "ivi-screen"
+		}
+	],
+	"surface": [
+		{
+			"name": "momiscreen",
+			"id": 2000,
+			"x": 0,
+			"y": 988,
+			"z": 10,
+			"attach": "ivi-layer"
+		},
+		{
+			"name": "mominavi",
+			"id": 2010,
+			"x": 0,
+			"y": 0,
+			"z": 100,
+			"attach": "ivi-layer"
+		},
+		{
+			"name": "momiplay",
+			"id": 2011,
+			"x": 0,
+			"y": 0,
+			"z": 110,
+			"attach": "ivi-layer"
+		},
+		{
+			"name": "momiradio",
+			"id": 2012,
+			"x": 0,
+			"y": 0,
+			"z": 120,
+			"attach": "ivi-layer"
+		},
+		{
+			"name": "momisetting",
+			"id": 2013,
+			"x": 0,
+			"y": 0,
+			"z": 130,
+			"attach": "ivi-layer"
+		},
+		{
+			"name": "xdg-test",
+			"id": 9801,
+			"x": 0,
+			"y": 0,
+			"z": 300,
+			"attach": "ivi-layer"
+		}
+	]
+}
