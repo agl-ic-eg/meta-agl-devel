@@ -2,7 +2,7 @@ SUMMARY = "CH57x keyboard based UI for container demo"
 DESCRIPTION = "Container exchange user interface using CH57x keyboard. \
                This UI based on mock container manager for AGL CES2023 demo."
 LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://${COREBASE}/meta/COPYING.MIT;md5=3da9cfbcb788c80a0384361b4de20420"
+LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
 SRC_URI += " \
     file://momikey.sh \
