@@ -1,0 +1,11 @@
+[Unit]
+Description=Image mount for drl-lease-test-cluster
+
+[Mount]
+What=/var/lib/machines/guest-image-drm-lease-test-cluster.ext4
+Where=/var/lib/machines/guest1
+Type=ext4
+Options=rw
+
+[Install]
+WantedBy=local-fs.target

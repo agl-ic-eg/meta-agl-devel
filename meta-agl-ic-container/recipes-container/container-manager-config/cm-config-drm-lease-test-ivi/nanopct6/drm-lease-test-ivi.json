@@ -1,0 +1,121 @@
+{
+	"name": "drm-lease-test-ivi",
+	"role": "ivi",
+	"base": {
+		"autoboot": true,
+		"bootpriority": 10,
+		"rootfs": {
+			"path": "/opt/container/guests/drm-lease-test-ivi/rootfs",
+			"mode":		"rw",
+			"hostpath": [
+				"/var/lib/machines/guest2"
+			]
+		},
+		"lifecycle": {
+			"halt": "SIGRTMIN+3",
+			"reboot": "SIGTERM",
+			"timeout": 15000
+		},
+		"cap": {
+			"drop": "sys_module mac_admin mac_override",
+			"keep": ""
+		},
+		"environment": [
+			"PIPEWIRE_RUNTIME_DIR=/var",
+			"HOME=/home/root"
+		]
+	},
+	"fs": {
+		"mount": [
+			{
+				"type": 	"filesystem",
+				"from": 	"tmpfs",
+				"to":		"run",
+				"fstype":	"tmpfs",
+				"option": 	"defaults 0 0"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/sys/kernel/security",
+				"to":		"sys/kernel/security",
+				"fstype":	"none",
+				"option": 	"ro,bind,optional 0 0"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/udev/data",
+				"to":		"run/udev/data",
+				"fstype":	"none",
+				"option": 	"ro,bind,optional,create=dir"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/drm-lease-manager/lease-ivi",
+				"to":		"var/display/drm-lease-manager/lease",
+				"fstype":	"none",
+				"option": 	"bind,create=file"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/dlt",
+				"to":		"run/dlt",
+				"fstype":	"none",
+				"option": 	"bind,optional,create=dir"
+			}
+		]
+	},
+	"device": {
+		"static": [
+			{
+				"type": 		"devdir",
+				"from": 		"/dev/dri",
+				"to":			"dev/dri",
+				"devnode":		"/dev/dri/card0",
+				"optional": 		0,
+				"wideallow": 	1,
+				"exclusive": 	0
+			},
+			{
+				"type": 		"devdir",
+				"from": 		"/dev/input",
+				"to":			"dev/input",
+				"devnode":		"/dev/input/event0",
+				"optional": 		1,
+				"wideallow": 	1,
+				"exclusive": 	0
+			},
+			{
+				"type": 		"devdir",
+				"from": 		"/dev/snd",
+				"to":			"dev/snd",
+				"devnode":		"/dev/snd/controlC0",
+				"optional": 		1,
+				"wideallow": 	1,
+				"exclusive": 	0
+			},
+			{
+				"type": 		"devnode",
+				"from": 		"/dev/mali0",
+				"to":			"dev/mali0",
+				"devnode":		"/dev/mali0",
+				"optional": 		0,
+				"wideallow": 	0,
+				"exclusive": 	0
+			}
+		]
+	},
+	"network": {
+		"static": [
+			{
+				"type": 	"veth",
+				"param": {
+					"name":	"eth0",
+					"link":	"lxcbr0",
+					"flags":	"up",
+					"hwaddr":	"00:16:3e:xx:xx:xx",
+					"mode": "bridge"
+				}
+			}
+		]
+	}
+}
