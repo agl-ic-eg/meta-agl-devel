@@ -1,0 +1,86 @@
+{
+	"name": "drm-lease-test-cluster",
+	"role": "cluster",
+	"base": {
+		"autoboot": true,
+		"bootpriority": 1,
+		"rootfs": {
+			"path": "/opt/container/guests/drm-lease-test-cluster/rootfs",
+			"mode":		"rw",
+			"hostpath": [
+				"/var/lib/machines/guest1"
+			]
+		},
+		"lifecycle": {
+			"halt": "SIGRTMIN+3",
+			"reboot": "SIGTERM",
+			"timeout": 5000
+		},
+		"cap": {
+			"drop": "sys_module mac_admin mac_override sys_time",
+			"keep": ""
+		},
+		"environment": [
+			"HOME=/home/root"
+		]
+	},
+	"fs": {
+		"mount": [
+			{
+				"type": 	"filesystem",
+				"from": 	"tmpfs",
+				"to":		"run",
+				"fstype":	"tmpfs",
+				"option": 	"defaults 0 0"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/sys/kernel/security",
+				"to":		"sys/kernel/security",
+				"fstype":	"none",
+				"option": 	"ro,bind,optional 0 0"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/drm-lease-manager/lease-cluster",
+				"to":		"var/display/drm-lease-manager/lease",
+				"fstype":	"none",
+				"option": 	"bind,create=file"
+			},
+			{
+				"type": 	"directory",
+				"from": 	"/run/dlt",
+				"to":		"run/dlt",
+				"fstype":	"none",
+				"option": 	"bind,optional,create=dir"
+			}
+		]
+	},
+	"device": {
+		"static": [
+			{
+				"type": 		"devdir",
+				"from": 		"/dev/dri",
+				"to":			"dev/dri",
+				"devnode":		"/dev/dri/card0",
+				"optional": 		0,
+				"wideallow": 	1,
+				"exclusive": 	0
+			}
+		]
+	},
+	"network": {
+		"static": [
+			{
+				"type": 	"veth",
+				"param": {
+					"name":	"veth0",
+					"link": 	"lxcbr0",
+					"flags":	"up",
+					"hwaddr":	"00:16:3e:xx:xx:xx",
+					"mode": "bridge"
+				}
+			}
+		]
+	}
+}
