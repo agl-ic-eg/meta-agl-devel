@@ -15,7 +15,7 @@ SRC_URI = " \
     file://container-manager.service \
     file://container-manager.json \
     "
-SRCREV = "0d1992efe362952003844904b046a174af205548"
+SRCREV = "665d8985e07688e8e8ec9dbaec63acd3ccd2d715"
 
 S = "${WORKDIR}/git"
 
