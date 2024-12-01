@@ -28,7 +28,7 @@
 	},
 	"resource": [
 		{
-			"type":		"cgroup",
+			"type":		"cgroupv2",
 			"object":	"cpuset.cpus",
 			"value":	"0"
 		},

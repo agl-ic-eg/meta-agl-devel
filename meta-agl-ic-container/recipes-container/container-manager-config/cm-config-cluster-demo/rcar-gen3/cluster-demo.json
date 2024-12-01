@@ -26,6 +26,18 @@
 			"HOME=/home/root"
 		]
 	},
+	"resource": [
+		{
+			"type":		"cgroupv2",
+			"object":	"cpuset.cpus",
+			"value":	"0"
+		},
+		{
+			"type":		"prlimit",
+			"object":	"rtprio",
+			"value":	"50"
+		}
+	],
 	"fs": {
 		"mount": [
 			{

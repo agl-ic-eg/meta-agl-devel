@@ -30,9 +30,14 @@
 	},
 	"resource": [
 		{
-			"type":		"cgroup",
+			"type":		"cgroupv2",
 			"object":	"cpuset.cpus",
-			"value":	"0-6"
+			"value":	"1-7"
+		},
+		{
+			"type":		"cgroupv2",
+			"object":	"memory.max",
+			"value":	"8G"
 		},
 		{
 			"type":		"prlimit",
