@@ -1,1 +1,0 @@
-HAS_MULTI_DISPLAY ??= "1"

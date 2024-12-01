@@ -1,8 +1,0 @@
-# lxc environment variable setting
-lxc.environment = QT_QPA_PLATFORM=wayland
-lxc.environment = QT_QPA_PLATFORM_PLUGIN_PATH=/usr/lib/plugins/
-lxc.environment = QML_IMPORT_PATH=/usr/lib/qml/
-lxc.environment = QML2_IMPORT_PATH=/usr/lib/qml/
-lxc.environment = QT_WAYLAND_SHELL_INTEGRATION=xdg-shell
-lxc.environment = PIPEWIRE_RUNTIME_DIR=/var
-

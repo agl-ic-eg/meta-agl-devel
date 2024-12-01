@@ -1,7 +1,0 @@
-# lxc mount setting
-lxc.mount.entry = /var/lib/lxc/dummy/system.conf etc/systemd/system.conf.d/10-environment.conf none bind,optional,create=file
-
-lxc.mount.auto = cgroup:mixed proc:mixed sys:mixed
-lxc.mount.entry = shm /dev/shm tmpfs defaults 0 0
-lxc.mount.entry = /sys/kernel/security sys/kernel/security none ro,bind,optional 0 0
-

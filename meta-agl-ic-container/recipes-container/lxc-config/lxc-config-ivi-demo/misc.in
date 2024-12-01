@@ -1,3 +1,0 @@
-# lxc misc setting
-lxc.start.auto = @LXC_AUTO_START@
-
