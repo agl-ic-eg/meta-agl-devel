@@ -128,6 +128,15 @@
 				"optional": 		0,
 				"wideallow": 	0,
 				"exclusive": 	0
+			},
+			{
+				"type": 		"devnode",
+				"from": 		"/dev/mpp_service",
+				"to":			"dev/mpp_service",
+				"devnode":		"/dev/mpp_service",
+				"optional": 		1,
+				"wideallow": 	1,
+				"exclusive": 	0
 			}
 		],
 		"dynamic": [
