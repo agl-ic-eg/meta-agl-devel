@@ -1,11 +1,11 @@
 SUMMARY = "Virtio-loopback-adapter application"
 DESCRIPTION = "Adapter bridge for virtio-loopback"
-LICENSE = "MIT"
-LIC_FILES_CHKSUM = "file://README.md;md5=ecc9c54ada6f0c33054d3bde010744f7"
+LICENSE = "GPL-2.0-or-later"
+LIC_FILES_CHKSUM = "file://COPYING;md5=570a9b3749dd0463a1778803b12a6dce"
 
 FILESEXTRAPATHS:prepend := "${THISDIR}/${PN}-${PV}:"
 SRC_URI = "git://gerrit.automotivelinux.org/gerrit/src/virtio/virtio-loopback-adapter;protocol=http;branch=${AGL_BRANCH}"
-SRCREV = "5d3c11bfab25ba6ffc37182df25c82d23dfcfb36"
+SRCREV = "4bf3f656b9d58b4b99f6ddbe5ca27f4a39876ed0"
 
 S = "${WORKDIR}/git"
 TARGET_CC_ARCH += "${LDFLAGS}"
