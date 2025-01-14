@@ -28,7 +28,7 @@ inherit go
 RDEPENDS:${PN}  = "bash"
 RDEPENDS:${PN}-dev = "bash"
 
-inherit systemd
+inherit systemd features_check
 SRC_URI += " file://ucl-launcher.service"
 
 REQUIRED_DISTRO_FEATURES = "systemd"

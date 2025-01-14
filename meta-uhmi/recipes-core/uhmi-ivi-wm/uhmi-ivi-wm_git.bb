@@ -19,10 +19,8 @@ PV = "0.0+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-inherit cmake
+inherit cmake systemd features_check
 
-
-inherit systemd
 SRC_URI += " file://uhmi-ivi-wm.service"
 REQUIRED_DISTRO_FEATURES = "systemd"
 SYSTEMD_PACKAGES = "${PN}"
@@ -38,7 +36,6 @@ do_install:append() {
 	install -m 644 ${WORKDIR}/*.service ${D}/${systemd_system_unitdir}
     fi
 }
-
 
 FILES:${PN} += " /usr/bin/uhmi-ivi-wm"
 FILES:${PN} += " /usr/share/*"

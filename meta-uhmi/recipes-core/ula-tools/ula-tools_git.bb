@@ -18,18 +18,16 @@ PV = "0.0+git${SRCPV}"
 
 S = "${WORKDIR}/git"
 
-
 export GO111MODULE="auto"
 
 GO_IMPORT = "ula-tools"
 GO_INSTALL = " ${GO_IMPORT}/cmd/ula-distrib-com  ${GO_IMPORT}/cmd/ula-node"
 
-
 inherit go
 RDEPENDS:${PN}  = "jq bash"
 RDEPENDS:${PN}-dev  = "bash"
 
-inherit systemd
+inherit systemd features_check
 
 SRC_URI += " \
 	file://ula-node.service \
@@ -47,9 +45,9 @@ FILES:${PN} += " \
 
 do_compile:append() {
     export CGO_ENABLED="1"
+    export GOFLAGS="-mod=vendor -trimpath"
     ${GO} build  -buildmode=c-shared -o ${GOPATH}/pkg/libulaclient.so -v -ldflags '-extldflags "-Wl,-soname=libulaclient.so"' ${GO_IMPORT}/pkg/ula-client-lib
 }
-
 
 do_install:append() {
     if ${@bb.utils.contains('DISTRO_FEATURES','systemd','true','false',d)}; then
@@ -65,7 +63,6 @@ do_install:append() {
 
     install -d ${D}${includedir}
     install -m 644 ${GOPATH}/pkg/libulaclient.h ${D}${includedir}
-
 }
 
 FILES:${PN} += "${libdir}"
