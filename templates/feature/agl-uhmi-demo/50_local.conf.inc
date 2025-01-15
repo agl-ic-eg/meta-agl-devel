@@ -1,0 +1,1 @@
+AGL_EXTRA_IMAGE_FSTYPES = "ext4"

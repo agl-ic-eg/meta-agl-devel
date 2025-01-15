@@ -1,0 +1,49 @@
+{
+    "format_v1": {
+        "command_type" : "remote_virtio_gpu",
+        "appli_name" : "glmark2",
+        "sender" : {
+            "launcher" : "agl-host0",
+            "command" : "/usr/bin/ucl-virtio-gpu-wl-send",
+            "frontend_params" : {
+                "scanout_x" : 0,
+                "scanout_y" : 0,
+                "scanout_w" : 1920,
+                "scanout_h" : 1080,
+                "server_port" : 33445
+            },
+            "appli" : "/usr/bin/glmark2-es2-wayland -s 1920x1080",
+            "env" : "LD_LIBRARY_PATH=/usr/lib/mesa-virtio"
+        },
+        "receivers" : [
+            {
+                "launcher" : "agl-host0",
+                "command" : "/usr/bin/ucl-virtio-gpu-wl-recv",
+                "backend_params" : {
+                    "ivi_surface_id" : 101000,
+                    "scanout_x" : 0,
+                    "scanout_y" : 0,
+                    "scanout_w" : 1920,
+                    "scanout_h" : 1080,
+                    "listen_port" : 33445,
+                    "initial_screen_color" : "0x33333333"
+                },
+                "env" : "XDG_RUNTIME_DIR=/run/user/200 WAYLAND_DISPLAY=wayland-1"
+            },
+            {
+                "launcher" : "agl-host1",
+                "command" : "/usr/bin/ucl-virtio-gpu-wl-recv",
+                "backend_params" : {
+                    "ivi_surface_id" : 101000,
+                    "scanout_x" : 0,
+                    "scanout_y" : 0,
+                    "scanout_w" : 1920,
+                    "scanout_h" : 1080,
+                    "listen_port" : 33445,
+                    "initial_screen_color" : "0x33333333"
+                },
+                "env" : "XDG_RUNTIME_DIR=/run/user/200 WAYLAND_DISPLAY=wayland-1"
+            }
+        ]
+    }
+}

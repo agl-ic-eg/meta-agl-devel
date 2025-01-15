@@ -1,0 +1,20 @@
+{
+  "command": "initial_vscreen",
+  "vlayer": [
+    {
+      "VID": 1010000,
+      "coord": "global",
+      "virtual_w": 1920, "virtual_h": 1080,
+      "vsrc_x": 0, "vsrc_y": 0, "vsrc_w": 1920, "vsrc_h": 1080,
+      "vdst_x": 960, "vdst_y": 0, "vdst_w": 1920, "vdst_h": 1080,
+      "vsurface": [
+        {
+          "VID": 101000,
+          "pixel_w": 1920, "pixel_h": 1080,
+          "psrc_x": 0, "psrc_y": 0, "psrc_w": 1920, "psrc_h": 1080,
+          "vdst_x": 0, "vdst_y": 0, "vdst_w": 1920, "vdst_h": 1080
+        }
+      ]
+    }
+  ]
+}
