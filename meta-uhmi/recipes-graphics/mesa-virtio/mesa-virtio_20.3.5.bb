@@ -8,7 +8,7 @@ LIC_FILES_CHKSUM = "file://docs/license.rst;md5=9aa1bc48c9826ad9fdb16661f6930496
 DEPENDS = "expat makedepend-native flex-native bison-native libxml2-native zlib chrpath-replacement-native python3-mako-native gettext-native"
 DEPENDS:append = " libdrm wayland wayland-native wayland-protocols python3-native"
 
-SRC_URI = "https://mesa.freedesktop.org/archive/mesa-${PV}.tar.xz"
+SRC_URI = "https://mesa.freedesktop.org/archive/older-versions/20.x/mesa-${PV}.tar.xz"
 
 SRC_URI[md5] = "224d7576618ef4dd8ac69f30b5b90b38"
 SRC_URI[sha256sum] = "909a72df63dfa3c0844ccf44a26ac028d148297ed333ab51560893923d7691ce"
