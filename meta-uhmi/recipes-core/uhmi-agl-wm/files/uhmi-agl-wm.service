@@ -1,0 +1,15 @@
+[Unit]
+Description=uhmi AGL window manager
+After=agl-compositor.service
+
+[Service]
+EnvironmentFile=-/etc/default/uhmi-agl-wm
+
+Type=simple
+ExecStart=/usr/bin/uhmi-agl-wm
+KillSignal=SIGKILL
+Restart=always
+RestartSec=1s
+
+[Install]
+WantedBy=multi-user.target
