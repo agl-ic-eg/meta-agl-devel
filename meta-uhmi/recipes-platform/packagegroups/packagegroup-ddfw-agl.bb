@@ -5,7 +5,7 @@ inherit packagegroup
 
 RDEPENDS:${PN} += " \
     ucl-tools \
-    ula-tools \
+    ula-tools-agl \
     uhmi-agl-wm \
     agl-compositor \
 "
