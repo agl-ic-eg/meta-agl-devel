@@ -1,5 +1,5 @@
 PV = "0.0+git${SRCPV}"
-SRCREV = "cf40e4d295c75567cb7d1d03f9fe291e9593e882"
+SRCREV = "52da5c41c45b7bbc8f042d40d3c2daa3c779e06c"
 BRANCH ?= "main"
 SRC_URI = " \
    git://github.com/unified-hmi/virtio-loopback-driver.git;protocol=https;branch=${BRANCH} \
