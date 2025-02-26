@@ -27,4 +27,6 @@ inherit cargo
 inherit cargo-update-recipe-crates
 inherit pkgconfig
 
+export BINDGEN_EXTRA_CLANG_ARGS= "--sysroot=${STAGING_DIR_TARGET}"
+
 include vhost-device-sound-crates.inc
