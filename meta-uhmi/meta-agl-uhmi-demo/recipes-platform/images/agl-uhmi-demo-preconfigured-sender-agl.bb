@@ -16,6 +16,7 @@ IMAGE_INSTALL += " \
     agl-compositor \
     native-shell-client \
     glmark2 \
+    uhmi-udev-conf \
 "
 
 UHMI_HOSTNAME ?= "agl-host0"

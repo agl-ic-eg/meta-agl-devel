@@ -3,9 +3,10 @@ Description=uhmi AGL window manager
 After=agl-compositor.service
 
 [Service]
-EnvironmentFile=-/etc/default/uhmi-agl-wm
-
 Type=simple
+User=agl-driver
+Environment=XDG_RUNTIME_DIR=/run/user/1001
+EnvironmentFile=-/etc/default/uhmi-agl-wm
 ExecStart=/usr/bin/uhmi-agl-wm
 KillSignal=SIGKILL
 Restart=always

@@ -28,7 +28,7 @@
                     "listen_port" : 33445,
                     "initial_screen_color" : "0x33333333"
                 },
-                "env" : "XDG_RUNTIME_DIR=/run/user/200 WAYLAND_DISPLAY=wayland-1"
+                "env" : ""
             },
             {
                 "launcher" : "agl-host1",
@@ -42,7 +42,7 @@
                     "listen_port" : 33445,
                     "initial_screen_color" : "0x33333333"
                 },
-                "env" : "XDG_RUNTIME_DIR=/run/user/200 WAYLAND_DISPLAY=wayland-1"
+                "env" : ""
             }
         ]
     }

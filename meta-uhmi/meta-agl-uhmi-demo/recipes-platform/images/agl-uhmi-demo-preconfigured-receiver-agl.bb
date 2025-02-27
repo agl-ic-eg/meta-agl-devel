@@ -15,6 +15,7 @@ IMAGE_INSTALL += " \
     uhmi-config-receiver \
     agl-compositor \
     native-shell-client \
+    uhmi-udev-conf \
 "
 
 UHMI_HOSTNAME ?= "agl-host1"

@@ -1,0 +1,4 @@
+KERNEL=="virtio-lo", GROUP="video", MODE="0660"
+KERNEL=="uinput", RUN="/usr/bin/chown agl-driver:input /dev/uinput"
+SUBSYSTEM=="drm", KERNEL=="card[1-9]*", ACTION=="add", PROGRAM="/bin/bash -c '[ -f /tmp/rvgpu-index ] && cat /tmp/rvgpu-index || echo \"\"'", RUN="/usr/bin/chown agl-driver:video /dev/dri/rvgpu_virtio%c"
+SUBSYSTEM=="input", KERNEL=="event[1-9]*", ACTION=="add", ATTRS{name}=="rvgpu*", PROGRAM="/bin/bash -c '[ -f /tmp/rvgpu-index ] && cat /tmp/rvgpu-index || echo \"\"'", RUN="/usr/bin/chown agl-driver:input /dev/input/%s{name}%c"

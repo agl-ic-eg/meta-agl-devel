@@ -2,7 +2,9 @@
 Description=ucl-launcher
 
 [Service]
-Type=idle
+Type=simple
+User=agl-driver
+Environment=XDG_RUNTIME_DIR=/run/user/1001
 ExecStart=/usr/bin/ucl-launcher
 KillSignal=SIGTERM
 TimeoutStopSec=10

@@ -4,7 +4,9 @@ Requires=uhmi-agl-wm.service
 After=uhmi-agl-wm.service
 
 [Service]
-Type=idle
+Type=simple
+User=agl-driver
+Environment=XDG_RUNTIME_DIR=/run/user/1001
 ExecStart=/usr/bin/ula-node
 KillSignal=SIGTERM
 TimeoutStopSec=10
