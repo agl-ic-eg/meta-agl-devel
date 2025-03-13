@@ -21,6 +21,7 @@
                 "command" : "/usr/bin/ucl-virtio-gpu-wl-recv",
                 "backend_params" : {
                     "ivi_surface_id" : 101000,
+                    "app_id" : "com.github.glmark2.glmark2",
                     "scanout_x" : 0,
                     "scanout_y" : 0,
                     "scanout_w" : 1920,
@@ -35,6 +36,7 @@
                 "command" : "/usr/bin/ucl-virtio-gpu-wl-recv",
                 "backend_params" : {
                     "ivi_surface_id" : 101000,
+                    "app_id" : "com.github.glmark2.glmark2",
                     "scanout_x" : 0,
                     "scanout_y" : 0,
                     "scanout_w" : 1920,

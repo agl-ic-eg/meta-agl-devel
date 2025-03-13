@@ -10,6 +10,7 @@
       "vsurface": [
         {
           "VID": 101000,
+          "APPID": "com.github.glmark2.glmark2",
           "pixel_w": 1920, "pixel_h": 1080,
           "psrc_x": 0, "psrc_y": 0, "psrc_w": 1920, "psrc_h": 1080,
           "vdst_x": 0, "vdst_y": 0, "vdst_w": 1920, "vdst_h": 1080

@@ -10,7 +10,7 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 
 PN="uhmi-agl-wm"
 
-SRCREV = "332c9f0b5fa2e2ee91d7f12331621a63759b6ae0"
+SRCREV = "20c1228834f141bbbb6c0ee71d4f3c4149f87b66"
 BRANCH ?= "master"
 SRC_URI = "git://gerrit.automotivelinux.org/gerrit/src/uhmi-agl-wm.git;protocol=https;branch=${AGL_BRANCH}"
 PV = "0.0+git${SRCPV}"

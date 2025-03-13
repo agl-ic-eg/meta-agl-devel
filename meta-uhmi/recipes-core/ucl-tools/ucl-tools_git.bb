@@ -9,8 +9,8 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 PN="ucl-tools"
 PROVIDES += "ucl-tools"
 
-SRCREV = "80e83132834b5ab62875bc294332bd00cd559d5d"
-BRANCH ?= "main"
+SRCREV = "8a95c5412ff90507e33f9c5d4e57e3a5b4bb7205"
+BRANCH ?= "agl"
 SRC_URI = " \
     git://github.com/unified-hmi/ucl-tools.git;protocol=https;branch=${BRANCH} \
 "
