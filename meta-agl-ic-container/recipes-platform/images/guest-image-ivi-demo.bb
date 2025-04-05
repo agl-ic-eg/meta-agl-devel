@@ -4,6 +4,7 @@ LICENSE = "MIT"
 require guest-image-minimal.bb
 
 IMAGE_INSTALL += " \
+    packagegroup-drm-lease-client-support \
     packagegroup-agl-momi-ivi-qt \
     qtwayland-setting \
     momiscreen \

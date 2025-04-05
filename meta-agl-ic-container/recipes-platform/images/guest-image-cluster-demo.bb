@@ -5,6 +5,7 @@ require guest-image-minimal.bb
 
 IMAGE_INSTALL += " \
     packagegroup-agl-ic-core \
+    packagegroup-drm-lease-client-support \
     packagegroup-agl-ic-qt \
     cluster-refgui \
 "

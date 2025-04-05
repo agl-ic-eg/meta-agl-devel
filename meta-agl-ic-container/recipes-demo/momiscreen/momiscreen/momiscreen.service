@@ -6,6 +6,7 @@ Requires=multi-user.target
 [Service]
 Type=simple
 EnvironmentFile=/etc/default/momiscreen
+EnvironmentFile=-/etc/default/qt-drm-lease
 EnvironmentFile=-/etc/default/qtwayland-common
 ExecStart=/usr/bin/momiscreen
 Restart=on-failure

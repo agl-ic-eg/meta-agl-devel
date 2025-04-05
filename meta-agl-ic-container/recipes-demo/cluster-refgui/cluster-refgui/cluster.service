@@ -5,6 +5,7 @@ PartOf=cluster-service.service
 
 [Service]
 EnvironmentFile=/etc/default/cluster
+EnvironmentFile=-/etc/default/qt-drm-lease
 ExecStart=/opt/apps/cluster
 Restart=on-failure
 StartLimitInterval=0
