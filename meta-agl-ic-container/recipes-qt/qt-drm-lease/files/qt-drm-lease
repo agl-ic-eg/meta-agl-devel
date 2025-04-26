@@ -1,2 +1,0 @@
-QT_QPA_EGLFS_DRMLEASE=lease
-DLM_RUNTIME_PATH=/var/display/drm-lease-manager
