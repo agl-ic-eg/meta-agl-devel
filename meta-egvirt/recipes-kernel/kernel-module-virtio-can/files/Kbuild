@@ -1,7 +1,0 @@
-# --dirty to mark version with uncommitted changes as dirty
-GIT_VERSION = $(shell git -C "$(MODULE_GIT_REPOSITORY_DIR)" describe --tags --dirty | sed 's/^v//')
-ccflags-y += -DDRIVER_VERSION=\"$(GIT_VERSION)\"
-
-ccflags-y += -Werror
-
-obj-m := virtio_can.o

@@ -16,7 +16,8 @@ The `meta-agl-devel` layer contains the following files and sub-layers:
 ├── meta-agl-rdp
 ├── meta-agl-ros2
 ├── meta-agl-test
-├── meta-egvirt
+├── meta-virtio
+├── meta-virtio/meta-virtio-loopback
 ├── meta-ekuiper
 ├── meta-nanomq
 ├── meta-offline-voice-agent
@@ -30,7 +31,8 @@ The following list provides a summary of these sub-layers:
 * `meta-agl-rdp`: Provides feature for video output over rdp.
 * `meta-agl-ros2`: Provides demo with ROS2.
 * `meta-agl-test`: Provides the test sets and test framework.
-* `meta-egvirt`: Provides VirtIO features into AGL.
+* `meta-virtio`: Provides extra VirtIO support.
+* `meta-virtio-loopback`: Provides VirtIO loopback support.
 * `meta-ekuiper`: Coming soon.
 * `meta-nanomq`: Coming soon.
 * `meta-offline-voice-agent`: Provides offline speech recognition and command execution features.
