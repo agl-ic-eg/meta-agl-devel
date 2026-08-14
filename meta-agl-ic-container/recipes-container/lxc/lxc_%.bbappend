@@ -13,6 +13,9 @@ do_install:append () {
         install -D -m 0644 ${UNPACKDIR}/$service ${D}${systemd_system_unitdir}/$service
         sed -i -e 's,@LIBEXECDIR@,${libexecdir},g' ${D}${systemd_system_unitdir}/$service
     done
+
+    # Fixup do not create default directory in lxc6
+    install -d ${D}${localstatedir}/lib/lxc
 }
 
 # Divide lxc autostart from main package.
